@@ -30,8 +30,8 @@ def string_obfuscation(lines):
 """.format(original, varname, len(newarray), ','.join(hex(e) for e in newarray), ','.join(hex(e) for e in encarray)))
         else:
             parsedlines.append(line)
-
     return parsedlines
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
     for file in files:
         if not os.path.exists(file[2]) or os.path.getmtime(file[1]) > os.path.getmtime(file[2]):
-            print("parsing {}".format(file[0]))
+            print("PrePreProcessing {}".format(file[0]))
             with open(file[1], "r") as r, open(file[2], "w") as w:
                 lines = r.readlines()
                 stringparsed_lines = string_obfuscation(lines)
