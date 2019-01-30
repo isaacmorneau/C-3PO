@@ -1,8 +1,8 @@
 cmake_minimum_required (VERSION 3.0)
-project (C-3PO)
+project (c3po)
 
-set (C-3PO_VERSION_MAJOR 1)
-set (C-3PO_VERSION_MINOR 0)
+set (c3po_VERSION_MAJOR 1)
+set (c3po_VERSION_MINOR 0)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
@@ -18,25 +18,25 @@ set(CMAKE_C_STANDARD 11)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}")
 
-add_definitions(-D_POSIX_C_SOURCE=200809L)
-add_definitions(-D_DEFAULT_SOURCE)
+add_definitions(-D_POSIX_C_SOURCE=200809L -D_DEFAULT_SOURCE -DC3PO)
 
-SET(SOURCES
-    "test.c"
-    "c3po.c"
-    )
 
-#force regeneration of the obfuscated strings header
-add_custom_target(gen_obfs ALL COMMAND python3 "${PROJECT_SOURCE_DIR}/obfs.py" "${PROJECT_SOURCE_DIR}/test_obfs.h" "test_obfs_enc.h")
+#this will consume all .c and .h files in src and after parsing will put them in c3po
+add_custom_target(gen_c3po ALL COMMAND python3 "${PROJECT_SOURCE_DIR}/c3po.py" "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/c3po")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 
-add_executable(C-3PO ${SOURCES})
+SET(SOURCES
+    "./c3po/test.c"
+    "./c3po/c3po.c"
+    )
+
+add_executable(c3po ${SOURCES})
 
 if (CMAKE_BUILD_TYPE EQUAL Release)
-    set_target_properties(C-3PO PROPERTIES INTERPROCEDURAL_OPTIMIZATION TRUE POSITION_INDEPENDENT_CODE TRUE)
+    set_target_properties(c3po PROPERTIES INTERPROCEDURAL_OPTIMIZATION TRUE POSITION_INDEPENDENT_CODE TRUE)
 endif()
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-target_link_libraries(C-3PO rt Threads::Threads)
+target_link_libraries(c3po rt Threads::Threads)

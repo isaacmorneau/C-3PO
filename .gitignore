@@ -1,4 +1,7 @@
+#cmake output
 bin/
+#c3po output
+c3po/
 
 # Prerequisites
 *.d
