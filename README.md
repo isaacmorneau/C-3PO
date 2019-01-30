@@ -1,2 +1,2 @@
-# 3-CPO
+# C-3PO
 C Pre Pre Processor Obfuscator
