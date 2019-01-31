@@ -15,7 +15,7 @@ endstring = re.compile('^[\s]*#pragma C3PO end')
 
 garbagestring = re.compile('^[\s]*#pragma C3PO garbage')
 
-shatter_enable_string = re.compile('^[\s]*#pragma C3PO shatter enable')
+shatter_enable_string = re.compile('^[\s]*#pragma C3PO shatter enable( low| medium| high)?')
 shatter_disable_string = re.compile('^[\s]*#pragma C3PO shatter disable')
 
 
@@ -97,11 +97,11 @@ def line_shuffle(lines):
             if not shuffling:
                 print("End pragma found without shuffle", file=sys.stderr)
                 continue
+            shuffling = False
             shuffle(shuffle_sets)
             for shuff in shuffle_sets:
                 for s in shuff:
                     parsedlines.append(s)
-            shuffling = False
             continue
 
         elif shuffling:
@@ -110,7 +110,7 @@ def line_shuffle(lines):
             parsedlines.append(line)
 
     if shuffling:
-        print("Missing end pragma", file=sys.stderr)
+        print("Shuffle end pragma never closed", file=sys.stderr)
         #this should not be relied on but this allows it to not fatal on bad definitons
         for shuff in shuffle_sets:
             for s in shuff:
@@ -134,7 +134,9 @@ asmlbljmp = """
 def line_garbage(lines):
     parsedlines = []
     enabled = False
+    shatterer = 2
     labelnum = 0
+    linenum = 0
     for line in lines:
         cleanline = line.strip()
 
@@ -143,6 +145,16 @@ def line_garbage(lines):
             if enabled:
                 print("Duplicate shatter enable pragma found", file=sys.stderr)
             enabled = True
+            linenum = 0
+            parts = shatter_enable_string.search(cleanline)
+            level = parts.group(1)
+            if level == " low":
+                shatterer = 3
+            elif level == " high":
+                shatterer = 1
+            #elif level == " medium":
+            else:
+                shatterer = 2
             continue
         elif shatter_disable_string.match(cleanline):
             if not enabled:
@@ -156,7 +168,8 @@ def line_garbage(lines):
             parsedlines.append(line)
             continue
 
-        if garbagestring.match(cleanline):
+        #if garbagestring.match(cleanline):
+        if linenum % shatterer == 0:
             #requesting
             labelnum += 1
             parsedlines.append(asmlbl.format(labelnum))
@@ -164,9 +177,10 @@ def line_garbage(lines):
         elif enabled:
             labelnum += 1
             parsedlines.append(asmlbl.format(labelnum))
-            parsedlines.append(line)
-        else:
-            parsedlines.append(line)
+
+        parsedlines.append(line)
+        #counter for interspacing shatter
+        linenum += 1
 
     if enabled:
         print("Shatter enable pragma never closed", file=sys.stderr)
@@ -206,8 +220,8 @@ if __name__ == "__main__":
             with open(file[1], "r") as r, open(file[2], "w") as w:
                 lines = r.readlines()
                 lines = line_cxor(lines)
+                lines = line_shuffle(lines)
                 lines = line_garbage(lines)
-                liens = line_shuffle(lines)
 
                 for line in lines:
                     w.write(line)
