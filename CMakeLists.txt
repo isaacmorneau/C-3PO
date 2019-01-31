@@ -23,6 +23,7 @@ add_definitions(-D_POSIX_C_SOURCE=200809L -D_DEFAULT_SOURCE -DC3PO)
 
 #this will consume all .c and .h files in src and after parsing will put them in c3po
 add_custom_target(gen_c3po ALL COMMAND python3 "${PROJECT_SOURCE_DIR}/c3po.py" "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/c3po")
+add_custom_target(strip_c3po ALL COMMAND strip -R .comment -R .note -R .note.ABI-tag -R .note.gnu.build-id -R .gnu.hash -R .gnu.version -R .gnu.version_r "${PROJECT_BINARY_DIR}/c3po")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 
 set(SOURCES
@@ -31,6 +32,8 @@ set(SOURCES
     )
 
 add_executable(c3po ${SOURCES})
+#used to trigger the full strip after the fact
+add_dependencies(strip_c3po c3po)
 
 if (CMAKE_BUILD_TYPE EQUAL Release)
     set_target_properties(c3po PROPERTIES INTERPROCEDURAL_OPTIMIZATION TRUE POSITION_INDEPENDENT_CODE TRUE)
