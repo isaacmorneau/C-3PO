@@ -34,6 +34,24 @@ def string_obfuscation(lines):
 
 
 if __name__ == "__main__":
+    print("""
+
+            /~\\
+           |o o)  C-3PO
+           _\=/_
+      #   /  _  \   #
+       \\\\//|/.\|\\\\//
+        \/  \_/  \/
+           |\ /|
+           \_ _/
+           | | |
+           | | |
+           []|[]
+           | | |
+    ______/_]_[_\______
+     C PrePreProcessor
+        Obfuscator""")
+
     if len(sys.argv) != 3:
         print("usage: ./c3po.py /path/to/src /path/to/output")
         sys.exit(1)
