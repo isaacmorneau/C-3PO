@@ -110,29 +110,29 @@ class Line():
     def classify(self, asm_state, flags):
         if c3po_pragma_string.match(self.cleanline):
             self.isflag = True
-        #TODO set flags on and off and record a copy
-        if cxor_enable_string.match(self.cleanline):
-            if flags["cxor"]:
-                print("Duplicate cxor enable pragma found", file=sys.stderr)
+            #TODO set flags on and off and record a copy
+            if cxor_enable_string.match(self.cleanline):
+                if flags["cxor"]:
+                    print("Duplicate cxor enable pragma found", file=sys.stderr)
+                else:
+                    flags["cxor"] = True
+            elif cxor_disable_string.match(self.cleanline):
+                if not flags["cxor"]:
+                    print("Duplicate cxor disable pragma found", file=sys.stderr)
+                else:
+                    flags["cxor"] = False
+            elif shatter_enable_string.match(self.cleanline):
+                if flags["shatter"]:
+                    print("Duplicate shatter enable pragma found", file=sys.stderr)
+                else:
+                    flags["shatter"] = True
+            elif shatter_disable_string.match(self.cleanline):
+                if not flags["shatter"]:
+                    print("Duplicate shatter disable pragma found", file=sys.stderr)
+                else:
+                    flags["shatter"] = False
             else:
-                flags["cxor"] = True
-        elif cxor_disable_string.match(self.cleanline):
-            if not flags["cxor"]:
-                print("Duplicate cxor disable pragma found", file=sys.stderr)
-            else:
-                flags["cxor"] = False
-        elif shatter_enable_string.match(self.cleanline):
-            if flags["shatter"]:
-                print("Duplicate shatter enable pragma found", file=sys.stderr)
-            else:
-                flags["shatter"] = True
-        elif shatter_disable_string.match(self.cleanline):
-            if not flags["shatter"]:
-                print("Duplicate shatter disable pragma found", file=sys.stderr)
-            else:
-                flags["shatter"] = False
-        else:
-            print("unrecognized or unimplemented option '{}'".format(cleanline))
+                print("unrecognized or unimplemented option '{}'".format(self.cleanline))
 
         #copy it for later
         self.flags = dict(flags)
