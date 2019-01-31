@@ -13,10 +13,34 @@ int main(void) {
     puts(HELLOWORLD);
 #pragma C3PO option
 
+    __asm__(
+        ".intel_syntax;"
+        ".heh1:"
+        ".att_syntax;"
+        :
+        :
+        :
+    );
 #pragma C3PO garbage
+    __asm__(
+        ".intel_syntax;"
+        ".heh2:"
+        ".att_syntax;"
+        :
+        :
+        :
+    );
     puts(HELLOWORLD);
 #pragma C3PO garbage
     puts(HELLOWORLD);
+    __asm__(
+        ".intel_syntax;"
+        ".heh3:"
+        ".att_syntax;"
+        :
+        :
+        :
+    );
 #pragma C3PO garbage
 
 #pragma C3PO end

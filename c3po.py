@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+#TODO make sure the version is at least 3.6 for secrets
 
 import sys, re, secrets, os
 from random import shuffle, choice
@@ -128,16 +129,7 @@ def asm_gt():
     opts =["""
 "xor %%eax, %%eax;"
 "cmp %%eax, {0};"
-""","""
-"mov %%eax, {0};"
-"shr %%eax;"
-"cmp %%eax, {0};"
-""","""
-"mov %%eax, {0};"
-"mul %%eax;"
-"cmp %%eax, {0};"
-"""
-    ]
+"""]
 
     return choice(opts).format(hex(h))
 
@@ -145,10 +137,9 @@ def asm_garbage(labelnum):
     return asmgarbage.format(labelnum,
 """
 {0}
-"jl .done{1};"
-"jmp .start{1};"
-"call printf;"
-""".format(asm_gt(), labelnum),
+"jnz .done{1};"
+"jmp .heh{2};"
+""".format(asm_gt(), labelnum, choice([1,2,3])),
                              "",
                              "",
                              '"%eax"')
