@@ -12,6 +12,5 @@ int main(void) {
 #pragma C3PO option
     puts(HELLOWORLD);
 #pragma C3PO end
-
     return 0;
 }

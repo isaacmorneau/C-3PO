@@ -98,6 +98,14 @@ def line_shuffle(lines):
 
         else:
             parsedlines.append(line)
+    if shuffling:
+        print("Missing end pragma", file=sys.stderr)
+        #this should not be relied on but this allows it to not fatal on bad definitons
+        for shuff in shuffle_sets:
+            for s in shuff:
+                parsedlines.append(s)
+
+
 
     return parsedlines
 
