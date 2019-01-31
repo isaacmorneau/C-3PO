@@ -212,6 +212,9 @@ if __name__ == "__main__":
     srcfolder = sys.argv[1]
     outfolder = sys.argv[2]
 
+    if not os.path.exists(outfolder):
+        os.mkdir(outfolder)
+
     files = [(file, os.path.join(srcfolder, file), os.path.join(outfolder, file)) for file in os.listdir(srcfolder) if os.path.isfile(os.path.join(srcfolder, file)) and (file.endswith(".c") or file.endswith(".h"))]
 
     for file in files:
