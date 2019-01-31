@@ -5,8 +5,9 @@
 #include "test_obfs.h"
 
 int main(void) {
-#pragma C3PO shatter enable high
+    c3po_zero_elf();
 
+#pragma C3PO shatter enable high
     int i = 0;
 #pragma C3PO shuffle
 
@@ -26,7 +27,6 @@ int main(void) {
 #pragma C3PO option
 
     i <<= 3;
-    printf("%d\n", i);
     puts(HELLOWORLD);
 
 #pragma C3PO end
@@ -34,5 +34,6 @@ int main(void) {
     printf("i:%d\n", i);
 
 #pragma C3PO shatter disable
+
     return 0;
 }

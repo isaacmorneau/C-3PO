@@ -7,6 +7,10 @@
 //be performed manually
 void c3po_str_xor(const uint8_t *encrypted, char *decrypted, size_t len);
 
+//a wonderful hack from the talk by int0x80 on anti forensics AF - defcon 24
+//this little mess is designed to cause issues for analysis tools
+void c3po_zero_elf();
+
 //this is to support debug and generated modes
 //example usage
 //C3PO_STR(printf("demo decode %s\n", c3po_str), DEFINED_STR);
