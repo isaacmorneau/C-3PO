@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import sys, re, secrets, os
-from random import shuffle
+from random import shuffle, choice
 
 enablestring = re.compile('^[\s]?#pragma C3PO enable')
 disablestring = re.compile('^[\s]?#pragma C3PO disable')
@@ -12,8 +12,10 @@ shufflestring = re.compile('^[\s]?#pragma C3PO shuffle')
 optionstring = re.compile('^[\s]?#pragma C3PO option')
 endstring = re.compile('^[\s]?#pragma C3PO end')
 
+garbagestring = re.compile('^[\s]?#pragma C3PO garbage')
 
-def string_obfuscation(lines):
+
+def line_string_xor(lines):
     parsedlines = []
     enabled = False
     for line in lines:
@@ -105,7 +107,62 @@ def line_shuffle(lines):
             for s in shuff:
                 parsedlines.append(s)
 
+    return parsedlines
 
+asmgarbage = """
+    __asm__(
+        ".intel_syntax;"
+        ".start{0}:"
+{1}
+        ".done{0}:"
+        ".att_syntax;"
+        :{2}
+        :{3}
+        :{4}
+    );
+"""
+
+def asm_gt():
+    h = secrets.randbelow(255) + 1
+
+    opts =["""
+"xor %%eax, %%eax;"
+"cmp %%eax, {0};"
+""","""
+"mov %%eax, {0};"
+"shr %%eax;"
+"cmp %%eax, {0};"
+""","""
+"mov %%eax, {0};"
+"mul %%eax;"
+"cmp %%eax, {0};"
+"""
+    ]
+
+    return choice(opts).format(hex(h))
+
+def asm_garbage(labelnum):
+    return asmgarbage.format(labelnum,
+"""
+{0}
+"jl .done{1};"
+"jmp .start{1};"
+"call printf;"
+""".format(asm_gt(), labelnum),
+                             "",
+                             "",
+                             '"%eax"')
+
+def line_garbage(lines):
+    parsedlines = []
+    labelnum = 0
+    for line in lines:
+        cleanline = line.strip()
+        if garbagestring.match(cleanline):
+            labelnum += 1
+            parsedlines.append(asm_garbage(labelnum))
+        else:
+            parsedlines.append(line)
 
     return parsedlines
 
@@ -141,9 +198,9 @@ if __name__ == "__main__":
             print("PrePreProcessing {}".format(file[0]))
             with open(file[1], "r") as r, open(file[2], "w") as w:
                 lines = r.readlines()
-                stringparsed_lines = string_obfuscation(lines)
+                lines = line_string_xor(lines)
+                lines = line_garbage(lines)
+                liens = line_shuffle(lines)
 
-                shuffled_lines = line_shuffle(stringparsed_lines)
-
-                for line in shuffled_lines:
+                for line in lines:
                     w.write(line)

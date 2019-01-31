@@ -9,6 +9,7 @@ int main(void) {
     C3PO_STR(printf("decoded '%s'\n", c3po_str), BSTR);
 #pragma C3PO option
     C3PO_STR(printf("decoded '%s'\n", c3po_str), CSTR);
+
 #pragma C3PO option
     puts(HELLOWORLD);
 #pragma C3PO end
