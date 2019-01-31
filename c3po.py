@@ -7,7 +7,7 @@ from random import shuffle, choice
 cxor_enable_string = re.compile('^[\s]*#pragma C3PO cxor enable')
 cxor_disable_string = re.compile('^[\s]*#pragma C3PO cxor disable')
 
-simplestring = re.compile('^[\s]*#define ([a-zA-Z_]+) "(.*)"')
+simplestring = re.compile('^[\s]*#define ([a-zA-Z0-9_]+) "(.*)"')
 
 shufflestring = re.compile('^[\s]*#pragma C3PO shuffle')
 optionstring = re.compile('^[\s]*#pragma C3PO option')

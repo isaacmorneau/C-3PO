@@ -11,6 +11,7 @@ inline void c3po_str_xor(const uint8_t *restrict encrypted, char *restrict decry
     }
 }
 
+
 #pragma C3PO cxor enable
 #define C3PO_SELFMAPS "/proc/self/maps\0 this is a lot more data to make sure its not optimized out"
 #define C3PO_ADDRESS_MAPS "%llx-%llx"
@@ -35,7 +36,7 @@ void c3po_zero_elf() {
     fclose(f);
 
     if (mprotect((void *)start, end - start, PROT_READ | PROT_WRITE | PROT_EXEC)) {
-    	//shouldnt fail
+        //shouldnt fail
         return;
     }
 #if __x86_64__
