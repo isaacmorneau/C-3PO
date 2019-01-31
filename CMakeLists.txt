@@ -9,7 +9,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 
-set(CMAKE_C_FLAGS "-Wall -Wextra")
+set(CMAKE_C_FLAGS "-Wall -Wextra -Wno-unknown-pragmas")
 set(CMAKE_C_FLAGS_DEBUG "-g -O0 -fsanitize=address -fno-omit-frame-pointer")
 set(CMAKE_C_FLAGS_RELEASE "-Ofast -s -fno-ident  -march=native -flto -DNDEBUG")
 
@@ -25,7 +25,7 @@ add_definitions(-D_POSIX_C_SOURCE=200809L -D_DEFAULT_SOURCE -DC3PO)
 add_custom_target(gen_c3po ALL COMMAND python3 "${PROJECT_SOURCE_DIR}/c3po.py" "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/c3po")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 
-SET(SOURCES
+set(SOURCES
     "./c3po/test.c"
     "./c3po/c3po.c"
     )

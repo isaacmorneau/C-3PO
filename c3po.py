@@ -1,15 +1,40 @@
 #!/usr/bin/env python3
 
 import sys, re, secrets, os
+from random import shuffle
 
-simplestring = re.compile('#define ([a-zA-Z_]+) "(.*)"')
+enablestring = re.compile('^[\s]?#pragma C3PO enable')
+disablestring = re.compile('^[\s]?#pragma C3PO disable')
+
+simplestring = re.compile('^[\s]?#define ([a-zA-Z_]+) "(.*)"')
+
+shufflestring = re.compile('^[\s]?#pragma C3PO shuffle')
+optionstring = re.compile('^[\s]?#pragma C3PO option')
+endstring = re.compile('^[\s]?#pragma C3PO end')
 
 
 def string_obfuscation(lines):
     parsedlines = []
-
+    enabled = False
     for line in lines:
         cleanline = line.strip()
+
+        #check for the pragmas
+        if enablestring.match(cleanline):
+            if enabled:
+                print("Duplicate enable pragma found", file=sys.stderr)
+            enabled = True
+        elif disablestring.match(cleanline):
+            if not enabled:
+                print("Duplicate disable pragma found", file=sys.stderr)
+            enabled = False
+
+        #dont check when its not on
+        if not enabled:
+            parsedlines.append(line)
+            continue
+
+        #check if this is something to change
         if simplestring.match(cleanline):
             parts = simplestring.search(cleanline)
             varname = parts.group(1)
@@ -29,13 +54,56 @@ def string_obfuscation(lines):
 #define {1}_LEN {2}
 """.format(original, varname, len(newarray), ','.join(hex(e) for e in newarray), ','.join(hex(e) for e in encarray)))
         else:
+            #maintain unchanged lines
             parsedlines.append(line)
+
+    #check for bad formatting
+    if enabled:
+        print("Enable pragma never closed", file=sys.stderr)
+    return parsedlines
+
+def line_shuffle(lines):
+    parsedlines = []
+    shuffle_sets = [[]]
+    shuffling = False
+
+    for line in lines:
+        cleanline = line.strip()
+
+        if shufflestring.match(cleanline):
+            if shuffling:
+                print("Duplicate shuffle pragma found", file=sys.stderr)
+                continue
+            shuffle_sets = [[]]
+            shuffling = True
+
+        elif optionstring.match(cleanline):
+            if not shuffling:
+                print("Option pragma found without shuffle", file=sys.stderr)
+                continue
+            shuffle_sets.append([])
+
+        elif endstring.match(cleanline):
+            if not shuffling:
+                print("End pragma found without shuffle", file=sys.stderr)
+                continue
+            shuffle(shuffle_sets)
+            for shuff in shuffle_sets:
+                for s in shuff:
+                    parsedlines.append(s)
+            shuffling = False
+
+        elif shuffling:
+            shuffle_sets[-1].append(line)
+
+        else:
+            parsedlines.append(line)
+
     return parsedlines
 
 
 if __name__ == "__main__":
     print("""
-
             /~\\
            |o o)  C-3PO
            _\=/_
@@ -67,5 +135,7 @@ if __name__ == "__main__":
                 lines = r.readlines()
                 stringparsed_lines = string_obfuscation(lines)
 
-                for line in stringparsed_lines:
+                shuffled_lines = line_shuffle(stringparsed_lines)
+
+                for line in shuffled_lines:
                     w.write(line)
