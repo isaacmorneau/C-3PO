@@ -19,6 +19,21 @@ shatter_disable_string = re.compile('^[\s]*#pragma C3PO shatter disable')
 
 c3po_pragma_string = re.compile('^[\s]*#pragma C3PO (.*)')
 
+
+asmlbl = """
+    __asm__(".shatter{0}:");
+"""
+
+asmlbljmp = """
+    __asm__(
+        "xor %%eax, %%eax;"
+        "cmp %%eax, {0};"
+        "jl .done{0};"
+        "call .shatter{1};"
+        ".done{0}:"
+        :::"%eax");
+"""
+
 class Project():
     def __init__(self, srcpath, dstpath):
         print("""
@@ -38,9 +53,8 @@ class Project():
      C PrePreProcessor
         Obfuscator""")
         self.files = []
-        self.asm_state = 0
         #load all the files in one go just making sure they are c and real
-        self.files = [File(os.path.join(srcfolder, file), os.path.join(dstfolder, file)) for file in os.listdir(srcfolder) if os.path.isfile(os.path.join(srcfolder, file)) and (file.endswith(".c") or file.endswith(".h"))]
+        self.files = [File(index, os.path.join(srcfolder, file), os.path.join(dstfolder, file)) for index, file in enumerate(os.listdir(srcfolder)) if os.path.isfile(os.path.join(srcfolder, file)) and (file.endswith(".c") or file.endswith(".h"))]
         #TODO at some point do incremental builds
         #for file in files:
         #    if not os.path.exists(file[2]) or os.path.getmtime(file[1]) > os.path.getmtime(file[2]):
@@ -51,7 +65,7 @@ class Project():
         print("Parsing:")
         for file in self.files:
             print("    {}".format(file))
-            file.classify(self.asm_state)
+            file.classify()
 
     #this will now chose what should be resolved in things such as the
     #asm labels to be chosen globally
@@ -59,7 +73,7 @@ class Project():
         print("Resolving:")
         for file in self.files:
             print("    {}".format(file))
-            file.resolve(self.asm_state)
+            file.resolve()
 
     #this actually writes the completed files
     def write(self):
@@ -70,28 +84,34 @@ class Project():
 
 
 class File():
-    def __init__(self, srcpath, dstpath):
+    def __init__(self, index, srcpath, dstpath):
         self.srcpath = srcpath
         self.dstpath = dstpath
+        self.index = index
+
+        self.asm_state = {
+            "max_shatter": 0
+        }
 
         self.flags = {
             "cxor":False,
-            "shatter":False
+            "shatter":False,
+            "shatter_level":2
         }
 
         with open(srcpath) as f:
-            self.lines = [Line(line) for line in f.readlines()]
+            self.lines = [Line(index, line) for index, line in enumerate(f.readlines())]
 
     def __str__(self):
         return "[{}:{}]".format(len(self.lines), self.srcpath)
 
-    def classify(self, asm_state):
+    def classify(self):
         for line in self.lines:
-            line.classify(asm_state, self.flags)
+            line.classify(self.asm_state, self.flags)
 
-    def resolve(self, asm_state):
+    def resolve(self):
         for line in self.lines:
-            line.resolve(asm_state)
+            line.resolve(self.asm_state)
 
     def write(self):
         with open(self.dstpath, "w") as f:
@@ -100,12 +120,13 @@ class File():
 
 
 class Line():
-    def __init__(self, rawline):
+    def __init__(self, index, rawline):
         self.line = rawline
         self.cleanline = rawline.strip()
         self.flags = {}
         #this is a flag of some kind, it should not be output
         self.isflag = False
+        self.index = index
 
     def classify(self, asm_state, flags):
         if c3po_pragma_string.match(self.cleanline):
@@ -126,6 +147,17 @@ class Line():
                     print("Duplicate shatter enable pragma found", file=sys.stderr)
                 else:
                     flags["shatter"] = True
+                    parts = shatter_enable_string.search(self.cleanline)
+                    level = parts.group(1)
+                    shatterer = 2
+                    if level == " low":
+                        shatterer = 3
+                    elif level == " medium":
+                        shatterer = 2
+                    elif level == " high":
+                        shatterer = 1
+                    flags["shatter_level"] = shatterer
+
             elif shatter_disable_string.match(self.cleanline):
                 if not flags["shatter"]:
                     print("Duplicate shatter disable pragma found", file=sys.stderr)
@@ -138,7 +170,7 @@ class Line():
         self.flags = dict(flags)
 
     def resolve(self, asm_state):
-        if self.flags["cxor"] and cxor_string.match(self.cleanline):
+        if self.flags["cxor"] and cxor_string.match(self.cleanline) and not self.isflag:
             parts = cxor_string.search(self.cleanline)
             varname = parts.group(1)
             original = parts.group(2)
@@ -152,9 +184,21 @@ class Line():
 
             newarray.append(0)
             encarray.append(0)
+            #this replaces the line so it must be before it
             self.line ="""//#define {1} "{0}"\n#define {1}_ENC {{{3},{4}}}\n#define {1}_LEN {2}""".format(
                 original, varname, len(newarray), ','.join(hex(e) for e in newarray), ','.join(hex(e) for e in encarray))
-
+        elif self.flags["shatter"] and not self.isflag:
+            self.line += asmlbl.format(asm_state["max_shatter"])
+            #if garbagestring.match(cleanline):
+            if self.index % self.flags["shatter_level"] == 0:
+                #build a shatter section
+                state = 0
+                if asm_state["max_shatter"] > 0:
+                    state = secrets.randbelow(asm_state["max_shatter"])
+                self.line += asmlbljmp.format(asm_state["max_shatter"], state)
+            #everything gets a label
+            #TODO reduce it to only be one label per c instruction
+            asm_state["max_shatter"] += 1
 
     def write(self, file):
         if self.isflag:
@@ -261,19 +305,6 @@ def line_shuffle(lines):
                 parsedlines.append(s)
 
     return parsedlines
-
-asmlbl = """
-    __asm__(".shatter{0}:");
-"""
-asmlbljmp = """
-    __asm__(
-        "xor %%eax, %%eax;"
-        "cmp %%eax, {0};"
-        "jl .done{0};"
-        "call .shatter{1};"
-        ".done{0}:"
-        :::"%eax");
-"""
 
 def line_garbage(lines):
     parsedlines = []
