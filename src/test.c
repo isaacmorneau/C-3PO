@@ -5,7 +5,7 @@
 #include "test_obfs.h"
 
 int main(void) {
-#pragma C3PO shatter enable low
+#pragma C3PO shatter enable high
 
     int i = 0;
 #pragma C3PO shuffle
