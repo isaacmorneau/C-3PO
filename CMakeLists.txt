@@ -9,7 +9,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 
-set(CMAKE_C_FLAGS "-Wall -Wextra -Wno-unknown-pragmas")
+set(CMAKE_C_FLAGS "-masm=intel -Wall -Wextra -Wno-unknown-pragmas")
 set(CMAKE_C_FLAGS_DEBUG "-g -O0 -fsanitize=address -fno-omit-frame-pointer")
 set(CMAKE_C_FLAGS_RELEASE "-Ofast -s -fno-ident  -march=native -flto -DNDEBUG")
 

@@ -4,33 +4,38 @@
 import sys, re, secrets, os
 from random import shuffle, choice
 
-enablestring = re.compile('^[\s]?#pragma C3PO enable')
-disablestring = re.compile('^[\s]?#pragma C3PO disable')
+cxor_enable_string = re.compile('^[\s]*#pragma C3PO cxor enable')
+cxor_disable_string = re.compile('^[\s]*#pragma C3PO cxor disable')
 
-simplestring = re.compile('^[\s]?#define ([a-zA-Z_]+) "(.*)"')
+simplestring = re.compile('^[\s]*#define ([a-zA-Z_]+) "(.*)"')
 
-shufflestring = re.compile('^[\s]?#pragma C3PO shuffle')
-optionstring = re.compile('^[\s]?#pragma C3PO option')
-endstring = re.compile('^[\s]?#pragma C3PO end')
+shufflestring = re.compile('^[\s]*#pragma C3PO shuffle')
+optionstring = re.compile('^[\s]*#pragma C3PO option')
+endstring = re.compile('^[\s]*#pragma C3PO end')
 
-garbagestring = re.compile('^[\s]?#pragma C3PO garbage')
+garbagestring = re.compile('^[\s]*#pragma C3PO garbage')
+
+shatter_enable_string = re.compile('^[\s]*#pragma C3PO shatter enable')
+shatter_disable_string = re.compile('^[\s]*#pragma C3PO shatter disable')
 
 
-def line_string_xor(lines):
+def line_cxor(lines):
     parsedlines = []
     enabled = False
     for line in lines:
         cleanline = line.strip()
 
         #check for the pragmas
-        if enablestring.match(cleanline):
+        if cxor_enable_string.match(cleanline):
             if enabled:
-                print("Duplicate enable pragma found", file=sys.stderr)
+                print("Duplicate cxor enable pragma found", file=sys.stderr)
             enabled = True
-        elif disablestring.match(cleanline):
+            continue
+        elif cxor_disable_string.match(cleanline):
             if not enabled:
-                print("Duplicate disable pragma found", file=sys.stderr)
+                print("Duplicate cxor disable pragma found", file=sys.stderr)
             enabled = False
+            continue
 
         #dont check when its not on
         if not enabled:
@@ -62,7 +67,7 @@ def line_string_xor(lines):
 
     #check for bad formatting
     if enabled:
-        print("Enable pragma never closed", file=sys.stderr)
+        print("Cxor enable pragma never closed", file=sys.stderr)
     return parsedlines
 
 def line_shuffle(lines):
@@ -79,12 +84,14 @@ def line_shuffle(lines):
                 continue
             shuffle_sets = [[]]
             shuffling = True
+            continue
 
         elif optionstring.match(cleanline):
             if not shuffling:
                 print("Option pragma found without shuffle", file=sys.stderr)
                 continue
             shuffle_sets.append([])
+            continue
 
         elif endstring.match(cleanline):
             if not shuffling:
@@ -95,12 +102,13 @@ def line_shuffle(lines):
                 for s in shuff:
                     parsedlines.append(s)
             shuffling = False
+            continue
 
         elif shuffling:
             shuffle_sets[-1].append(line)
-
         else:
             parsedlines.append(line)
+
     if shuffling:
         print("Missing end pragma", file=sys.stderr)
         #this should not be relied on but this allows it to not fatal on bad definitons
@@ -110,50 +118,58 @@ def line_shuffle(lines):
 
     return parsedlines
 
-asmgarbage = """
+asmlbl = """
+    __asm__(".shatter{0}:");
+"""
+asmlbljmp = """
     __asm__(
-        ".intel_syntax;"
-        ".start{0}:"
-{1}
+        "xor %%eax, %%eax;"
+        "cmp %%eax, {0};"
+        "jl .done{0};"
+        "call .shatter{1};"
         ".done{0}:"
-        ".att_syntax;"
-        :{2}
-        :{3}
-        :{4}
-    );
+        :::"%eax");
 """
-
-def asm_gt():
-    h = secrets.randbelow(255) + 1
-
-    opts =["""
-"xor %%eax, %%eax;"
-"cmp %%eax, {0};"
-"""]
-
-    return choice(opts).format(hex(h))
-
-def asm_garbage(labelnum):
-    return asmgarbage.format(labelnum,
-"""
-{0}
-"jnz .done{1};"
-"jmp .heh{2};"
-""".format(asm_gt(), labelnum, choice([1,2,3])),
-                             "",
-                             "",
-                             '"%eax"')
 
 def line_garbage(lines):
     parsedlines = []
+    enabled = False
     labelnum = 0
     for line in lines:
         cleanline = line.strip()
+
+        #check for the pragmas
+        if shatter_enable_string.match(cleanline):
+            if enabled:
+                print("Duplicate shatter enable pragma found", file=sys.stderr)
+            enabled = True
+            continue
+        elif shatter_disable_string.match(cleanline):
+            if not enabled:
+                print("Duplicate shatter disable pragma found", file=sys.stderr)
+            enabled = False
+            continue
+
+        #dont check when its not on
+        #just pass the lines through
+        if not enabled:
+            parsedlines.append(line)
+            continue
+
         if garbagestring.match(cleanline):
+            #requesting
             labelnum += 1
-            parsedlines.append(asm_garbage(labelnum))
+            parsedlines.append(asmlbl.format(labelnum))
+            parsedlines.append(asmlbljmp.format(labelnum, secrets.randbelow(labelnum) + 1))
+        elif enabled:
+            labelnum += 1
+            parsedlines.append(asmlbl.format(labelnum))
+            parsedlines.append(line)
         else:
             parsedlines.append(line)
+
+    if enabled:
+        print("Shatter enable pragma never closed", file=sys.stderr)
 
     return parsedlines
 
@@ -189,7 +205,7 @@ if __name__ == "__main__":
             print("PrePreProcessing {}".format(file[0]))
             with open(file[1], "r") as r, open(file[2], "w") as w:
                 lines = r.readlines()
-                lines = line_string_xor(lines)
+                lines = line_cxor(lines)
                 lines = line_garbage(lines)
                 liens = line_shuffle(lines)
 
