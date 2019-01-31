@@ -1,5 +1,6 @@
 #include <elf.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 
@@ -10,7 +11,6 @@ inline void c3po_str_xor(const uint8_t *restrict encrypted, char *restrict decry
         decrypted[i] = encrypted[i] ^ encrypted[len + i];
     }
 }
-
 
 #pragma C3PO cxor enable
 #define C3PO_SELFMAPS "/proc/self/maps\0 this is a lot more data to make sure its not optimized out"
