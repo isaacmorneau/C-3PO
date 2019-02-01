@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 #TODO make sure the version is at least 3.6 for secrets
 
-import sys, re, secrets, os
-from random import shuffle, choice
+import sys, re, secrets, os, random
 
 cxor_enable_string = re.compile('^[\s]*#pragma C3PO cxor enable')
 cxor_disable_string = re.compile('^[\s]*#pragma C3PO cxor disable')
 cxor_string = re.compile('^[\s]*#define ([a-zA-Z0-9_]+) "(.*)"')
 
-shufflestring = re.compile('^[\s]*#pragma C3PO shuffle')
-optionstring = re.compile('^[\s]*#pragma C3PO option')
-endstring = re.compile('^[\s]*#pragma C3PO end')
+shuffle_enable_string = re.compile('^[\s]*#pragma C3PO shuffle enable')
+shuffle_case_string = re.compile('^[\s]*#pragma C3PO case')
+shuffle_disable_string = re.compile('^[\s]*#pragma C3PO shuffle disable')
 
 garbagestring = re.compile('^[\s]*#pragma C3PO garbage')
 
@@ -93,11 +92,19 @@ class File():
             "max_shatter": 0
         }
 
+            #structure
+            #shuffle [
+            #   (start, end, [[lines],[lines]])
+            #]
+        self.shuffle = []
+
         self.flags = {
             "cxor":False,
             "shatter":False,
-            "shatter_level":2
+            "shuffle":False,
+            "shatter_level":2,
         }
+
 
         with open(srcpath) as f:
             self.lines = [Line(index, line) for index, line in enumerate(f.readlines())]
@@ -107,9 +114,15 @@ class File():
 
     def classify(self):
         for line in self.lines:
-            line.classify(self.asm_state, self.flags)
+            line.classify(self.asm_state, self.flags, self.shuffle)
 
     def resolve(self):
+        #this collapses the shuffled lines before the rest of resolution
+        for shuffle in self.shuffle:
+            random.shuffle(shuffle[2])
+            #replace the lines that were shuffled
+            self.lines[shuffle[0]:shuffle[1]] = [line for chunk in shuffle[2] for line in chunk]
+
         for line in self.lines:
             line.resolve(self.asm_state)
 
@@ -128,7 +141,10 @@ class Line():
         self.isflag = False
         self.index = index
 
-    def classify(self, asm_state, flags):
+    def __str__(self):
+        return "{}:{}:{}".format(self.index, self.flags.items(), self.cleanline)
+
+    def classify(self, asm_state, flags, shuffle):
         if c3po_pragma_string.match(self.cleanline):
             self.isflag = True
             #TODO set flags on and off and record a copy
@@ -139,7 +155,7 @@ class Line():
                     flags["cxor"] = True
             elif cxor_disable_string.match(self.cleanline):
                 if not flags["cxor"]:
-                    print("Duplicate cxor disable pragma found", file=sys.stderr)
+                    print("Unmatched cxor disable pragma found", file=sys.stderr)
                 else:
                     flags["cxor"] = False
             elif shatter_enable_string.match(self.cleanline):
@@ -163,8 +179,27 @@ class Line():
                     print("Duplicate shatter disable pragma found", file=sys.stderr)
                 else:
                     flags["shatter"] = False
+            elif shuffle_enable_string.match(self.cleanline):
+                if flags["shuffle"]:
+                    print("Unmatched shuffle enable pragma found", file=sys.stderr)
+                else:
+                    flags["shuffle"] = True
+                    shuffle.append([self.index, self.index, [[]]])
+            elif shuffle_case_string.match(self.cleanline):
+                shuffle[-1][1] = self.index
+                shuffle[-1][2].append([])
+                pass
+            elif shuffle_disable_string.match(self.cleanline):
+                if not flags["shuffle"]:
+                    print("Unmatched shuffle disable pragma found", file=sys.stderr)
+                else:
+                    flags["shuffle"] = False
+                    shuffle[-1][1] = self.index
             else:
-                print("unrecognized or unimplemented option '{}'".format(self.cleanline))
+                print("Unrecognized option '{}'".format(self.cleanline))
+
+        if flags["shuffle"]:
+            shuffle[-1][2][-1].append(self)
 
         #copy it for later
         self.flags = dict(flags)

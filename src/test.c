@@ -9,27 +9,27 @@ int main(void) {
 
 #pragma C3PO shatter enable high
     int i = 0;
-#pragma C3PO shuffle
+#pragma C3PO shuffle enable
 
     C3PO_STR(printf("decoded '%s'\n", c3po_str), BSTR);
     i += 3245;
 
-#pragma C3PO option
+#pragma C3PO case
 
     C3PO_STR(printf("decoded '%s'\n", c3po_str), CSTR);
     i -= 32225;
 
-#pragma C3PO option
+#pragma C3PO case
 
     i *= 345;
     puts(HELLOWORLD);
 
-#pragma C3PO option
+#pragma C3PO case
 
     i <<= 3;
     puts(HELLOWORLD);
 
-#pragma C3PO end
+#pragma C3PO shuffle disable
 
     printf("i:%d\n", i);
 
