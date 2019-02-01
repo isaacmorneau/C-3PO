@@ -9,5 +9,11 @@
 
 #pragma C3PO cxor disable
 
+#pragma C3PO cxor(32) enable
+//this ensurse padding works
+#define SMOL_STR "hi"
+#pragma C3PO cxor disable
+
+
 //outside of the pragmas its untouched
 #define HELLOWORLD "hello world"

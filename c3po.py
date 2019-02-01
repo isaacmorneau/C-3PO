@@ -3,7 +3,8 @@
 
 import sys, re, secrets, os, random
 
-cxor_enable_string = re.compile('^[\s]*#pragma C3PO cxor enable')
+#TODO replace regex with a lexer that isnt pattern based ()
+cxor_enable_string = re.compile('^[\s]*#pragma C3PO cxor(\(.+\))? enable')
 cxor_disable_string = re.compile('^[\s]*#pragma C3PO cxor disable')
 cxor_string = re.compile('^[\s]*#define ([a-zA-Z0-9_]+) "(.*)"')
 
@@ -13,7 +14,7 @@ shuffle_disable_string = re.compile('^[\s]*#pragma C3PO shuffle disable')
 
 garbagestring = re.compile('^[\s]*#pragma C3PO garbage')
 
-shatter_enable_string = re.compile('^[\s]*#pragma C3PO shatter enable( low| medium| high)?')
+shatter_enable_string = re.compile('^[\s]*#pragma C3PO shatter(\(.+\))? enable( low| medium| high)?')
 shatter_disable_string = re.compile('^[\s]*#pragma C3PO shatter disable')
 
 c3po_pragma_string = re.compile('^[\s]*#pragma C3PO (.*)')
@@ -28,7 +29,7 @@ asmlbljmp = """
         "xor %%eax, %%eax;"
         "test %%eax, %%eax;"
         "jz .done{0};"
-        "call .shatter{1};"
+        "{2} .shatter{1};"
         ".done{0}:"
         :::"%eax");
 """
@@ -103,6 +104,7 @@ class File():
             "shatter":False,
             "shuffle":False,
             "shatter_level":2,
+            "shatter_type":"call",
         }
 
 
@@ -153,6 +155,15 @@ class Line():
                     print("Duplicate cxor enable pragma found", file=sys.stderr)
                 else:
                     flags["cxor"] = True
+                    parts = cxor_enable_string.search(self.cleanline)
+                    option = parts.group(1)
+                    if option:
+                        option = option.strip()[1:-1]
+                        if option:
+                            try:
+                                flags["cxor_minlength"] = int(option)
+                            except ValueError as ex:
+                                print("Failed to parse padding optionue for cxor '{}' number was expected".format(option), file=sys.stderr)
             elif cxor_disable_string.match(self.cleanline):
                 if not flags["cxor"]:
                     print("Unmatched cxor disable pragma found", file=sys.stderr)
@@ -164,13 +175,24 @@ class Line():
                 else:
                     flags["shatter"] = True
                     parts = shatter_enable_string.search(self.cleanline)
-                    level = parts.group(1)
+                    option = parts.group(1)
+                    if option:
+                        option = option.strip()[1:-1]
+                        if option:
+                            if option == "jmp":
+                                flags["shatter_type"] = "jmp"
+                            elif option == "call":
+                                flags["shatter_type"] = "call"
+                            else:
+                                print("Unrecognized option for shatter type '{}' possible options: 'jmp','call'".format(option), file=sys.stderr)
+
+                    level = parts.group(2).strip()
                     shatterer = 2
-                    if level == " low":
+                    if level == "low":
                         shatterer = 3
-                    elif level == " medium":
+                    elif level == "medium":
                         shatterer = 2
-                    elif level == " high":
+                    elif level == "high":
                         shatterer = 1
                     flags["shatter_level"] = shatterer
 
@@ -212,6 +234,12 @@ class Line():
             #magic to parse escapes
             #thanks jerub https://stackoverflow.com/a/4020824
             string = bytes(original, "utf-8").decode("unicode_escape").encode()
+
+            #handle requested padding of strings
+            if "cxor_minlength" in self.flags:
+                if self.flags["cxor_minlength"] > len(string):
+                    string += bytes([0 for i in range(self.flags["cxor_minlength"] - len(string))])
+
             encarray = list(secrets.token_bytes(len(string)))
             newarray = []
             for i in range(len(string)):
@@ -230,7 +258,7 @@ class Line():
                 state = 0
                 if asm_state["max_shatter"] > 0:
                     state = secrets.randbelow(asm_state["max_shatter"])
-                self.line += asmlbljmp.format(asm_state["max_shatter"], state)
+                self.line += asmlbljmp.format(asm_state["max_shatter"], state, self.flags["shatter_type"])
             #everything gets a label
             #TODO reduce it to only be one label per c instruction
             asm_state["max_shatter"] += 1
