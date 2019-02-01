@@ -20,20 +20,6 @@ shatter_disable_string = re.compile('^[\s]*#pragma C3PO shatter disable')
 c3po_pragma_string = re.compile('^[\s]*#pragma C3PO (.*)')
 
 
-asmlbl = """
-    __asm__(".shatter{0}:");
-"""
-
-asmlbljmp = """
-    __asm__(
-        "xor %%eax, %%eax;"
-        "test %%eax, %%eax;"
-        "jz .done{0};"
-        "{2} .shatter{1};"
-        ".done{0}:"
-        :::"%eax");
-"""
-
 class Project():
     def __init__(self, srcpath, dstpath):
         print("""
@@ -90,7 +76,9 @@ class File():
         self.index = index
 
         self.asm_state = {
-            "max_shatter": 0
+            "total":0,
+            "index":0,
+            "indexes":[],
         }
 
             #structure
@@ -125,14 +113,43 @@ class File():
             #replace the lines that were shuffled
             self.lines[shuffle[0]:shuffle[1]] = [line for chunk in shuffle[2] for line in chunk]
 
+        #ensure every option is used by doing a cheap shuffle to operate like a true
+        #uniform distributioin
+        me = list(self.asm_state["indexes"])
+        random.shuffle(me)
+        you = list(self.asm_state["indexes"])
+        random.shuffle(you)
+
+        #reset index back down
+        self.asm_state["index"] = 0
+
         for line in self.lines:
-            line.resolve(self.asm_state)
+            line.resolve(self.asm_state, me, you)
 
     def write(self):
         with open(self.dstpath, "w") as f:
             for line in self.lines:
                 line.write(f)
 
+
+#asmlbl = """
+#    __asm__(".shatter{0}:");
+#"""
+
+asmlbljmp = """
+    __asm__(
+        "xor %%eax, %%eax;"
+        "call .shatter{2};"
+        "inc %%eax;"
+        "cmp %%eax, 0;"
+        "jg .done{1};"
+        "{0} .shatter{2};"
+        ".shatter{1}:"
+        "mov %%eax, {1};"
+        "ret;"
+        ".done{1}:"
+        :::"%eax");
+"""# type, me, you
 
 class Line():
     def __init__(self, index, rawline):
@@ -147,6 +164,7 @@ class Line():
         return "{}:{}:{}".format(self.index, self.flags.items(), self.cleanline)
 
     def classify(self, asm_state, flags, shuffle):
+        #do all pragama matches first
         if c3po_pragma_string.match(self.cleanline):
             self.isflag = True
             #TODO set flags on and off and record a copy
@@ -219,15 +237,28 @@ class Line():
                     shuffle[-1][1] = self.index
             else:
                 print("Unrecognized option '{}'".format(self.cleanline))
-
-        if flags["shuffle"]:
-            shuffle[-1][2][-1].append(self)
-
-        #copy it for later
+        #copy the state we set
         self.flags = dict(flags)
 
-    def resolve(self, asm_state):
-        if self.flags["cxor"] and cxor_string.match(self.cleanline) and not self.isflag:
+        #mark lines for future resolution
+        if not self.isflag:
+            if self.flags["shuffle"]:
+                shuffle[-1][2][-1].append(self)
+
+            if self.flags["shatter"]:
+                asm_state["total"] += 1
+
+            #if we are in shatter mode tag lines that need to be replaced
+            if self.flags["shatter"] and self.index % self.flags["shatter_level"] == 0:
+                self.flags["shatter_mark"] = True
+                asm_state["indexes"].append(asm_state["index"])
+                asm_state["index"] += 1
+
+            if self.flags["cxor"] and cxor_string.match(self.cleanline):
+                self.flags["cxor_mark"] = True
+
+    def resolve(self, asm_state, shatterself, shatterother):
+        if "cxor_mark" in self.flags and self.flags["cxor_mark"]:
             parts = cxor_string.search(self.cleanline)
             varname = parts.group(1)
             original = parts.group(2)
@@ -250,18 +281,12 @@ class Line():
             #this replaces the line so it must be before it
             self.line ="""//#define {1} "{0}"\n#define {1}_ENC {{{3},{4}}}\n#define {1}_LEN {2}""".format(
                 original, varname, len(newarray), ','.join(hex(e) for e in newarray), ','.join(hex(e) for e in encarray))
-        elif self.flags["shatter"] and not self.isflag:
-            self.line += asmlbl.format(asm_state["max_shatter"])
-            #if garbagestring.match(cleanline):
-            if self.index % self.flags["shatter_level"] == 0:
-                #build a shatter section
-                state = 0
-                if asm_state["max_shatter"] > 0:
-                    state = secrets.randbelow(asm_state["max_shatter"])
-                self.line += asmlbljmp.format(asm_state["max_shatter"], state, self.flags["shatter_type"])
-            #everything gets a label
-            #TODO reduce it to only be one label per c instruction
-            asm_state["max_shatter"] += 1
+        elif "shatter_mark" in self.flags and self.flags["shatter_mark"]:
+            #build a shatter section
+            self.line += asmlbljmp.format(self.flags["shatter_type"],
+                                          shatterself[asm_state["index"]],
+                                          shatterother[asm_state["index"]])
+            asm_state["index"] += 1
 
     def write(self, file):
         if self.isflag:
