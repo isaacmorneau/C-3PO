@@ -1,3 +1,7 @@
+#c3po
+
+__pycache__/
+
 #cmake output
 bin/
 #c3po output
