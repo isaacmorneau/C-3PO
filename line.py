@@ -33,7 +33,7 @@ def state_matcher(line):
     tmp = parts.group(3)
     options = []
     if tmp:
-        options = tmp.split(",")
+        options = [opt.strip() for opt in tmp.split(",")]
     toggle = parts.group(4)
     return name, options, toggle
 
