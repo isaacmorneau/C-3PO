@@ -3,7 +3,6 @@ import re, secrets, sys
 
 #TODO replace regex with a lexer that isnt pattern based ()
 cxor_string = re.compile('^[\s]*#define ([a-zA-Z0-9_]+) "(.*)"')
-shuffle_case_string = re.compile('^[\s]*#pragma C3PO case')
 mangle_function_string = re.compile('([a-zA-Z_][a-zA-Z0-9_]*)\(')
 
 c3po_common_match = re.compile('^[\s]*#pragma[\s]+C3PO[\s]+([a-z]+)(\((.+)\))?[\s]*(.*)')
@@ -99,8 +98,7 @@ class Line():
             elif is_toggle == False:
                 if name == "shuffle":
                     shuffle[-1][1] = self.index
-            elif shuffle_case_string.match(self.cleanline):
-                shuffle[-1][1] = self.index
+            elif name == "case":
                 shuffle[-1][2].append([])
             else:
                 print("Unrecognized option '{}'".format(self.cleanline))
