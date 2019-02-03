@@ -13,11 +13,15 @@ const struct magic ** supercall(int j) {
     return NULL;
 }
 
+#pragma C3PO shatter(backbone testing123)
+
+#pragma C3PO shatter(backbone alt)
+
 int main(void) {
     c3po_zero_elf();
 
 
-#pragma C3PO shatter(call, high) enable
+#pragma C3PO shatter(call, high, backbone testing123) enable
     int i = 0;
 
     for (int j = 0; j < 40; ++j) {
@@ -48,6 +52,27 @@ int main(void) {
 
     printf("i:%d\n", i);
 
+#pragma C3PO shatter disable
+
+#pragma C3PO shatter(jmp, high, backbone alt) enable
+    puts("second shatter");
+
+
+
+
+
+    puts("1");
+
+
+
+
+
+    puts("2");
+
+
+
+
+    puts("3");
 #pragma C3PO shatter disable
 
     return 0;
