@@ -3,7 +3,7 @@ import re, secrets, sys
 
 #TODO replace regex with a lexer that isnt pattern based ()
 cxor_string = re.compile('^[\s]*#define ([a-zA-Z0-9_]+) "(.*)"')
-mangle_function_string = re.compile('([a-zA-Z_][a-zA-Z0-9_]*)\(')
+mangle_function_string = re.compile('.*[\s]+([a-zA-Z_][a-zA-Z0-9_]*)\(.*')
 
 c3po_common_match = re.compile('^[\s]*#pragma[\s]+C3PO[\s]+([a-z]+)(\((.+)\))?[\s]*(.*)')
 
@@ -64,7 +64,7 @@ class Line():
     def __str__(self):
         return "{}:{}:{}".format(self.index, self.flags.items(), self.cleanline)
 
-    def classify(self, asm_state, flags, shuffle):
+    def classify(self, flags, multiline, multifile):
         #do all pragama matches first
         if c3po_common_match.match(self.cleanline):
             self.isflag = True
@@ -94,12 +94,12 @@ class Line():
                         else:
                             print("Unrecognized option for shatter: '{}'".format(opt), file=sys.stderr)
                 if name == "shuffle":
-                    shuffle.append([self.index, self.index, [[]]])
+                    multiline["shuffle"].append([self.index, self.index, [[]]])
             elif is_toggle == False:
                 if name == "shuffle":
-                    shuffle[-1][1] = self.index
+                    multiline["shuffle"][-1][1] = self.index
             elif name == "case":
-                shuffle[-1][2].append([])
+                multiline["shuffle"][-1][2].append([])
             else:
                 print("Unrecognized option '{}'".format(self.cleanline))
         #copy the state we set
@@ -108,21 +108,31 @@ class Line():
         #mark lines for future resolution
         if not self.isflag:
             if self.flags["shuffle"]:
-                shuffle[-1][2][-1].append(self)
+                multiline["shuffle"][-1][2][-1].append(self)
 
             if self.flags["shatter"]:
-                asm_state["total"] += 1
+                multiline["asm"]["total"] += 1
 
             #if we are in shatter mode tag lines that need to be replaced
             if self.flags["shatter"] and self.index % self.flags["shatter_level"] == 0:
                 self.flags["shatter_mark"] = True
-                asm_state["indexes"].append(asm_state["index"])
-                asm_state["index"] += 1
+                multiline["asm"]["indexes"].append(multiline["asm"]["index"])
+                multiline["asm"]["index"] += 1
 
             if self.flags["cxor"] and cxor_string.match(self.cleanline):
                 self.flags["cxor_mark"] = True
+            if self.flags["mangle"] and mangle_function_string.match(self.cleanline):
+                parts = mangle_function_string.search(self.cleanline)
+                func = parts.group(1)
+                self.flags["mangle_mark"] = func
+                if func not in multifile["mangle"]:
+                    multifile["mangle"].append(func)
 
-    def resolve(self, asm_state, shatterself, shatterother):
+    def resolve(self, multiline, multifile, shatterself, shatterother):
+        for key, value in multifile["mangle_match"].items():
+            if key in self.line:
+                self.line = self.line.replace(key, value)
+
         if "cxor_mark" in self.flags and self.flags["cxor_mark"]:
             parts = cxor_string.search(self.cleanline)
             varname = parts.group(1)
@@ -136,22 +146,35 @@ class Line():
                 if self.flags["cxor_minlength"] > len(string):
                     string += bytes([0 for i in range(self.flags["cxor_minlength"] - len(string))])
 
-            encarray = list(secrets.token_bytes(len(string)))
-            newarray = []
-            for i in range(len(string)):
-                newarray.append(encarray[i] ^ string[i])
+            key1array = list(secrets.token_bytes(len(string)))
+            key2array = list(secrets.token_bytes(len(string)))
+            #encrypt string with key
+            newarray = [v ^ key1array[i] for i,v in enumerate(string)]
+            #encrypt key with second key
+            key1array = [v ^ key2array[i] for i,v in enumerate(key1array)]
 
             newarray.append(0)
-            encarray.append(0)
+            key1array.append(0)
+            key2array.append(0)
             #this replaces the line so it must be before it
-            self.line ="""//#define {1} "{0}"\n#define {1}_ENC {{{3},{4}}}\n#define {1}_LEN {2}""".format(
-                original, varname, len(newarray), ','.join(hex(e) for e in newarray), ','.join(hex(e) for e in encarray))
+            self.line ="""//#define {1} "{0}"
+#define {1}_ENC {{{3}}}
+#define {1}_KEY1 {{{4}}}
+#define {1}_KEY2 {{{5}}}
+#define {1}_LEN {2}""".format(original,
+                              varname,
+                              len(newarray),
+                              ','.join(hex(e) for e in newarray),
+                              ','.join(hex(e) for e in key1array),
+                              ','.join(hex(e) for e in key2array)
+                              )
         elif "shatter_mark" in self.flags and self.flags["shatter_mark"]:
             #build a shatter section
             self.line += asmlbljmp.format(self.flags["shatter_type"],
-                                          shatterself[asm_state["index"]],
-                                          shatterother[asm_state["index"]])
-            asm_state["index"] += 1
+                                          shatterself[multiline["asm"]["index"]],
+                                          shatterother[multiline["asm"]["index"]])
+            multiline["asm"]["index"] += 1
+
 
     def write(self, file):
         if self.isflag:

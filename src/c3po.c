@@ -6,9 +6,19 @@
 
 #include "c3po.h"
 
-inline void c3po_str_xor(const uint8_t *restrict encrypted, char *restrict decrypted, size_t len) {
+void c3po_str_xor(const uint8_t *restrict base, uint8_t *restrict key1, const uint8_t *restrict key2,
+    char *decrypted, size_t len) {
+
     for (size_t i = 0; i < len; ++i) {
-        decrypted[i] = encrypted[i] ^ encrypted[len + i];
+        key1[i] ^= key2[i];
+    }
+
+    for (size_t i = 0; i < len; ++i) {
+        decrypted[i] = base[i] ^ key1[i];
+    }
+
+    for (size_t i = 0; i < len; ++i) {
+        key1[i] ^= key2[i];
     }
 }
 

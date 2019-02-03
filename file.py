@@ -7,17 +7,21 @@ class File():
         self.dstpath = dstpath
         self.index = index
 
-        self.asm_state = {
-            "total":0,
-            "index":0,
-            "indexes":[],
-        }
+        #structure
+        #shuffle [
+        #   (start, end, [[lines],[lines]])
+        #]
 
-            #structure
-            #shuffle [
-            #   (start, end, [[lines],[lines]])
-            #]
-        self.shuffle = []
+        self.multiline = {
+            "asm": {
+                "total":0,
+                "index":0,
+                "indexes":[],
+            },
+            "shuffle":[],
+            "mangle":[],
+            "mangle_match":{},
+        }
 
         self.flags = {
             "cxor":False,
@@ -35,29 +39,29 @@ class File():
     def __str__(self):
         return "[{}:{}]".format(len(self.lines), self.srcpath)
 
-    def classify(self):
+    def classify(self, multifile):
         for line in self.lines:
-            line.classify(self.asm_state, self.flags, self.shuffle)
+            line.classify(self.flags, self.multiline, multifile)
 
-    def resolve(self):
+    def resolve(self, multifile):
         #this collapses the shuffled lines before the rest of resolution
-        for shuffle in self.shuffle:
+        for shuffle in self.multiline["shuffle"]:
             random.shuffle(shuffle[2])
             #replace the lines that were shuffled
             self.lines[shuffle[0]:shuffle[1]] = [line for chunk in shuffle[2] for line in chunk]
 
         #ensure every option is used by doing a cheap shuffle to operate like a true
         #uniform distributioin
-        me = list(self.asm_state["indexes"])
+        me = list(self.multiline["asm"]["indexes"])
         random.shuffle(me)
-        you = list(self.asm_state["indexes"])
+        you = list(self.multiline["asm"]["indexes"])
         random.shuffle(you)
 
         #reset index back down
-        self.asm_state["index"] = 0
+        self.multiline["asm"]["index"] = 0
 
         for line in self.lines:
-            line.resolve(self.asm_state, me, you)
+            line.resolve(self.multiline, multifile, me, you)
 
     def write(self):
         with open(self.dstpath, "w") as f:
