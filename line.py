@@ -1,25 +1,12 @@
-import re, secrets
+import re, secrets, sys
 
 
 #TODO replace regex with a lexer that isnt pattern based ()
-cxor_enable_string = re.compile('^[\s]*#pragma C3PO cxor(\(.+\))? enable')
-cxor_disable_string = re.compile('^[\s]*#pragma C3PO cxor disable')
 cxor_string = re.compile('^[\s]*#define ([a-zA-Z0-9_]+) "(.*)"')
-
-shuffle_enable_string = re.compile('^[\s]*#pragma C3PO shuffle enable')
 shuffle_case_string = re.compile('^[\s]*#pragma C3PO case')
-shuffle_disable_string = re.compile('^[\s]*#pragma C3PO shuffle disable')
-
-garbagestring = re.compile('^[\s]*#pragma C3PO garbage')
-
-shatter_enable_string = re.compile('^[\s]*#pragma C3PO shatter(\(.+\))? enable( low| medium| high)?')
-shatter_disable_string = re.compile('^[\s]*#pragma C3PO shatter disable')
-
-mangle_enable_string = re.compile('^[\s]*#pragma C3PO mangle(\(.+\))? enable')
 mangle_function_string = re.compile('([a-zA-Z_][a-zA-Z0-9_]*)\(')
-mangle_disable_string = re.compile('^[\s]*#pragma C3PO mangle disable')
 
-c3po_pragma_string = re.compile('^[\s]*#pragma C3PO (.*)')
+c3po_common_match = re.compile('^[\s]*#pragma[\s]+C3PO[\s]+([a-z]+)(\((.+)\))?[\s]*(.*)')
 
 #asmlbl = """
 #    __asm__(".shatter{0}:");
@@ -40,6 +27,32 @@ asmlbljmp = """
         :::"%eax");
 """# type, me, you
 
+def state_matcher(line):
+    parts = c3po_common_match.search(line)
+    name = parts.group(1)
+    tmp = parts.group(3)
+    options = []
+    if tmp:
+        options = tmp.split(",")
+    toggle = parts.group(4)
+    return name, options, toggle
+
+def flag_toggle(name, toggle, flags):
+    if name in ["cxor", "shatter", "shuffle", "mangle"]:
+        if toggle == "enable":
+            if flags[name]:
+                print("Duplicate pragma, {} is enabled".format(name), file=sys.stderr)
+            else:
+                flags[name] = True
+                return True
+        elif toggle == "disable":
+            if not flags[name]:
+                print("Unmatched pragma, {} is disabled".format(name), file=sys.stderr)
+            else:
+                flags[name] = False
+                return False
+    return
+
 class Line():
     def __init__(self, index, rawline):
         self.line = rawline
@@ -54,76 +67,41 @@ class Line():
 
     def classify(self, asm_state, flags, shuffle):
         #do all pragama matches first
-        if c3po_pragma_string.match(self.cleanline):
+        if c3po_common_match.match(self.cleanline):
             self.isflag = True
-            #TODO set flags on and off and record a copy
-            if cxor_enable_string.match(self.cleanline):
-                if flags["cxor"]:
-                    print("Duplicate cxor enable pragma found", file=sys.stderr)
-                else:
-                    flags["cxor"] = True
-                    parts = cxor_enable_string.search(self.cleanline)
-                    option = parts.group(1)
-                    if option:
-                        option = option.strip()[1:-1]
-                        if option:
-                            try:
-                                flags["cxor_minlength"] = int(option)
-                            except ValueError as ex:
-                                print("Failed to parse padding optionue for cxor '{}' number was expected".format(option), file=sys.stderr)
-            elif cxor_disable_string.match(self.cleanline):
-                if not flags["cxor"]:
-                    print("Unmatched cxor disable pragma found", file=sys.stderr)
-                else:
-                    flags["cxor"] = False
-            elif shatter_enable_string.match(self.cleanline):
-                if flags["shatter"]:
-                    print("Duplicate shatter enable pragma found", file=sys.stderr)
-                else:
-                    flags["shatter"] = True
-                    parts = shatter_enable_string.search(self.cleanline)
-                    option = parts.group(1)
-                    if option:
-                        option = option.strip()[1:-1]
-                        if option:
-                            if option == "jmp":
-                                flags["shatter_type"] = "jmp"
-                            elif option == "call":
-                                flags["shatter_type"] = "call"
-                            else:
-                                print("Unrecognized option for shatter type '{}' possible options: 'jmp','call'".format(option), file=sys.stderr)
 
-                    level = parts.group(2).strip()
-                    shatterer = 2
-                    if level == "low":
-                        shatterer = 3
-                    elif level == "medium":
-                        shatterer = 2
-                    elif level == "high":
-                        shatterer = 1
-                    flags["shatter_level"] = shatterer
+            name, options, toggle = state_matcher(self.cleanline)
 
-            elif shatter_disable_string.match(self.cleanline):
-                if not flags["shatter"]:
-                    print("Duplicate shatter disable pragma found", file=sys.stderr)
-                else:
-                    flags["shatter"] = False
-            elif shuffle_enable_string.match(self.cleanline):
-                if flags["shuffle"]:
-                    print("Unmatched shuffle enable pragma found", file=sys.stderr)
-                else:
-                    flags["shuffle"] = True
+            is_toggle = flag_toggle(name, toggle, flags)
+
+            if is_toggle == True:
+                if name == "cxor" and len(options) > 0:
+                    try:
+                        flags["cxor_minlength"] = int(options[0])
+                    except ValueError as ex:
+                        print("Failed to parse padding optionue for cxor '{}' number was expected".format(options[0]), file=sys.stderr)
+                if name == "shatter":
+                    for opt in options:
+                        if opt == "jmp":
+                            flags["shatter_type"] = "jmp"
+                        elif opt == "call":
+                            flags["shatter_type"] = "call"
+                        elif opt == "low":
+                            flags["shatter_level"] = 3
+                        elif opt == "medium":
+                            flags["shatter_level"] = 2
+                        elif opt == "high":
+                            flags["shatter_level"] = 1
+                        else:
+                            print("Unrecognized option for shatter: '{}'".format(opt), file=sys.stderr)
+                if name == "shuffle":
                     shuffle.append([self.index, self.index, [[]]])
+            elif is_toggle == False:
+                if name == "shuffle":
+                    shuffle[-1][1] = self.index
             elif shuffle_case_string.match(self.cleanline):
                 shuffle[-1][1] = self.index
                 shuffle[-1][2].append([])
-                pass
-            elif shuffle_disable_string.match(self.cleanline):
-                if not flags["shuffle"]:
-                    print("Unmatched shuffle disable pragma found", file=sys.stderr)
-                else:
-                    flags["shuffle"] = False
-                    shuffle[-1][1] = self.index
             else:
                 print("Unrecognized option '{}'".format(self.cleanline))
         #copy the state we set

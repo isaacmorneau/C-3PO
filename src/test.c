@@ -8,7 +8,7 @@ int main(void) {
     c3po_zero_elf();
 
 
-#pragma C3PO shatter(call) enable high
+#pragma C3PO shatter(call,high) enable
     int i = 0;
 #pragma C3PO shuffle enable
 
