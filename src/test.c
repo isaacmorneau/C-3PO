@@ -13,15 +13,18 @@ const struct magic ** supercall(int j) {
     return NULL;
 }
 
-#pragma c3po shatter(backbone testing123)
-
-#pragma c3po shatter(backbone alt)
+#pragma c3po signature
+void say_hi(const char *msg) {
+    volatile int a = 0;
+    printf("%s\n", msg);
+    a++;
+}
 
 int main(void) {
     c3po_zero_elf();
 
 
-#pragma c3po shatter(call, high, backbone testing123) enable
+#pragma c3po shatter(call, high) enable
     int i = 0;
 
     for (int j = 0; j < 40; ++j) {
@@ -30,49 +33,28 @@ int main(void) {
 
 #pragma c3po shuffle enable
 
-    C3PO_STR(printf("decoded '%s'\n", c3po_str), BSTR);
     i += 3245;
+    C3PO_STR(printf("decoded '%s'\n", c3po_str), BSTR);
 
 #pragma c3po case
 
-    C3PO_STR(printf("decoded '%s'\n", c3po_str), CSTR);
     i -= 32225;
+    C3PO_STR(printf("decoded '%s'\n", c3po_str), CSTR);
 
 #pragma c3po case
 
     i *= 345;
-    puts(HELLOWORLD);
+    puts("2");
 
 #pragma c3po case
 
     i <<= 3;
-    puts(HELLOWORLD);
+    puts("1");
 
 #pragma c3po shuffle disable
 
     printf("i:%d\n", i);
 
-#pragma c3po shatter disable
-
-#pragma c3po shatter(jmp, high, backbone alt) enable
-    puts("second shatter");
-
-
-
-
-
-    puts("1");
-
-
-
-
-
-    puts("2");
-
-
-
-
-    puts("3");
 #pragma c3po shatter disable
 
     return 0;
