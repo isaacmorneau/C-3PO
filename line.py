@@ -3,33 +3,24 @@ import re, secrets, sys
 
 #TODO replace regex with a lexer that isnt pattern based ()
 cxor_string = re.compile('^[\s]*#define ([a-zA-Z0-9_]+) "(.*)"')
-#cheap match on all function like calls with some basic pragma avoidance
-mangle_function_string = re.compile('[^#]*[\s]+([a-zA-Z_][a-zA-Z0-9_]*)\(.*')
+mangle_function_string = re.compile('.*[\s]+([a-zA-Z_][a-zA-Z0-9_]*)\(.*')
 
 c3po_common_match = re.compile('^[\s]*#pragma[\s]+c3po[\s]+([a-z]+)(\((.+)\))?[\s]*(.*)')
 
-asmslbl = """
-    __asm__(".{0}_start:");
-"""
+#asmlbl = """
+#    __asm__(".shatter{0}:");
+#"""
 
-asmbbjmp = """
+asmlbljmp = """
     __asm__(
-        "mov %%eax, %%ebx;"
-        "call .{0}_bb;"
-        "cmp %%eax, %%ebx;"
-        "je .{0}_start;"
+        ".shatter{0}:"
+        "xor %%eax, %%eax;"
+        "test %%eax, %%eax;"
+        "jz .done{0};"
+        "{2} .shatter{1};"
+        ".done{0}:"
         :::"%eax");
-"""
-
-asmbblbl = """
-void shatter_bb_{0}(void) {{
-    __asm__(
-        ".{0}_bb:"
-        "inc %%eax;"
-        "ret;"
-        :::"%eax");
-}}
-"""
+"""# me, you, type
 
 def state_matcher(line):
     parts = c3po_common_match.search(line)
@@ -70,10 +61,6 @@ class Line():
         return "{}:{}:{}".format(self.index, self.flags.items(), self.cleanline)
 
     def classify(self, flags, multiline, multifile):
-        #for local dict setting
-        shatter_bb_mark = False
-        shatter_s_mark = False
-
         #do all pragama matches first
         if c3po_common_match.match(self.cleanline):
             self.isflag = True
@@ -100,13 +87,6 @@ class Line():
                             flags["shatter_level"] = 2
                         elif opt == "high":
                             flags["shatter_level"] = 1
-                        elif opt.startswith("backbone"):
-                            temp = opt.split(" ")
-                            if len(temp) != 2:
-                                print("Unrecognized option for shatter: '{}'".format(opt), file=sys.stderr)
-                            else:
-                                shatter_s_mark = True;
-                                flags["shatter_bb"] = temp[1]
                         else:
                             print("Unrecognized option for shatter: '{}'".format(opt), file=sys.stderr)
                 if name == "shuffle":
@@ -116,17 +96,6 @@ class Line():
                     multiline["shuffle"][-1][1] = self.index
             elif name == "case":
                 multiline["shuffle"][-1][2].append([])
-            elif name == "shatter":
-                for opt in options:
-                    if opt.startswith("backbone"):
-                        temp = opt.split(" ")
-                        if len(temp) != 2:
-                            print("Unrecognized option for shatter: '{}'".format(opt), file=sys.stderr)
-                        else:
-                            flags["shatter_bb"] = temp[1]
-                            #set the mark on where to create the backbone
-                            shatter_bb_mark = True
-
             else:
                 print("Unrecognized option '{}'".format(self.cleanline))
         #copy the state we set
@@ -154,14 +123,6 @@ class Line():
                 self.flags["mangle_mark"] = func
                 if func not in multifile["mangle"]:
                     multifile["mangle"].append(func)
-        else:
-            #we only want the mark on the local dictionary
-            if shatter_s_mark:
-                #start of a shatter chain
-                self.flags["shatter_s_mark"] = True
-            if shatter_bb_mark:
-                #backbone of a shatter chain
-                self.flags["shatter_bb_mark"] = True
 
     def resolve(self, multiline, multifile, shatterself, shatterother):
         for key, value in multifile["mangle_match"].items():
@@ -203,18 +164,12 @@ class Line():
                               ','.join(hex(e) for e in key1array),
                               ','.join(hex(e) for e in key2array)
                               )
-
-        if "shatter_mark" in self.flags and self.flags["shatter_mark"]:
+        elif "shatter_mark" in self.flags and self.flags["shatter_mark"]:
             #build a shatter section
-            self.line += asmbbjmp.format(self.flags["shatter_bb"])
-
-        if "shatter_s_mark" in self.flags and self.flags["shatter_s_mark"]:
-            self.line = asmslbl.format(self.flags["shatter_bb"])
-            self.isflag = False
-        if "shatter_bb_mark" in self.flags and self.flags["shatter_bb_mark"]:
-            #build a shatter backbone
-            self.line = asmbblbl.format(self.flags["shatter_bb"])
-            self.isflag = False
+            self.line += asmlbljmp.format(shatterself[multiline["asm"]["index"]],
+                                          shatterother[multiline["asm"]["index"]],
+                                          self.flags["shatter_type"])
+            multiline["asm"]["index"] += 1
 
 
     def write(self, file):

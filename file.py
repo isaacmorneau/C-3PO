@@ -21,7 +21,6 @@ class File():
             "shuffle":[],
             "mangle":[],
             "mangle_match":{},
-            "shatter_keys":[],
         }
 
         self.flags = {
@@ -30,7 +29,6 @@ class File():
             "shuffle":False,
             "mangle":False,
             "shatter_level":2,
-            "shatter_bb": None,
             "shatter_type":"call",
         }
 
