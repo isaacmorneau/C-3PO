@@ -2,7 +2,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#pragma C3PO mangle enable
+#pragma c3po mangle enable
 
 //extract the c string for the encrypted text via simple xor with embeded key
 //expects [encrypted cstring][xor key1 for cstring][xor key2 for cstring]
@@ -16,7 +16,7 @@ void c3po_str_xor(const uint8_t *base, uint8_t *key1, const uint8_t *key2, char 
 //this little mess is designed to cause issues for analysis tools
 void c3po_zero_elf();
 
-#pragma C3PO mangle disable
+#pragma c3po mangle disable
 
 //this is to support debug and generated modes
 //example usage

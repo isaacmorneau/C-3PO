@@ -6,9 +6,9 @@ cxor_string = re.compile('^[\s]*#define ([a-zA-Z0-9_]+) "(.*)"')
 #cheap match on all function like calls with some basic pragma avoidance
 mangle_function_string = re.compile('[^#]*[\s]+([a-zA-Z_][a-zA-Z0-9_]*)\(.*')
 
-c3po_common_match = re.compile('^[\s]*#pragma[\s]+C3PO[\s]+([a-z]+)(\((.+)\))?[\s]*(.*)')
+c3po_common_match = re.compile('^[\s]*#pragma[\s]+c3po[\s]+([a-z]+)(\((.+)\))?[\s]*(.*)')
 
-asmslbl= """
+asmslbl = """
     __asm__(".{0}_start:");
 """
 
@@ -19,7 +19,7 @@ asmbbjmp = """
         "cmp %%eax, %%ebx;"
         "je .{0}_start;"
         :::"%eax");
-"""# type, me, you
+"""
 
 asmbblbl = """
 void shatter_bb_{0}(void) {{
