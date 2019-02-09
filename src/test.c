@@ -2,7 +2,7 @@
 #include <stdio.h>
 
 #include "c3po.h"
-#include "test_obfs.h"
+#include "test.h"
 
 const struct magic ** supercall(int j) {
     volatile int a = 0x4823;
@@ -13,15 +13,16 @@ const struct magic ** supercall(int j) {
     return NULL;
 }
 
-#pragma c3po signature
+#pragma c3po mangle(params, name)
 void say_hi(const char *msg) {
     volatile int a = 0;
     printf("%s\n", msg);
     a++;
 }
 
-#pragma c3po signature
-void (*)(void) crazyfunc(int (a), int b, ...);
+//TODO currently unsupported
+#pragma c3po mangle(params)
+void (*crazyfunc(int (a), int b, ...));
 
 int main(void) {
     c3po_zero_elf();

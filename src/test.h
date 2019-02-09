@@ -20,10 +20,8 @@
 
 //this demos function name mangling, it will replace them by a randomly generated name that
 //is the same format as ida and binja's formats
-#pragma c3po mangle enable
 struct magic{
     int a;
 };
+#pragma c3po mangle(name)
 const struct magic ** supercall(int j);
-
-#pragma c3po mangle disable

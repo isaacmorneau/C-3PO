@@ -50,6 +50,7 @@ class File():
         #   (start, end, [[lines],[lines]])
         #]
 
+        #multiline single file block post resolution options
         self.multiline = {
             "asm": {
                 "total":0,
@@ -57,15 +58,13 @@ class File():
                 "indexes":[],
             },
             "shuffle":[],
-            "mangle":[],
-            "mangle_match":{},
         }
 
+        #multiline single file block options
         self.flags = {
             "cxor":False,
             "shatter":False,
             "shuffle":False,
-            "mangle":False,
             "shatter_level":2,
             "shatter_type":"call",
         }

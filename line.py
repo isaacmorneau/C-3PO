@@ -32,7 +32,7 @@ def state_matcher(line):
     return name, options, toggle
 
 def flag_toggle(name, toggle, flags):
-    if name in ["cxor", "shatter", "shuffle", "mangle"]:
+    if name in ["cxor", "shatter", "shuffle"]:
         if toggle == "enable":
             if flags[name]:
                 print("Duplicate pragma, {} is enabled".format(name), file=sys.stderr)
@@ -116,8 +116,12 @@ class Line():
                     multiline["shuffle"][-1][1] = self.index
             elif name == "case":
                 multiline["shuffle"][-1][2].append([])
-            elif name == "signature":
-                feedforward["signature"] = True
+            elif name == "mangle":
+                feedforward["mangle"] = True
+                if "params" in options:
+                    feedforward["params"] = True
+                if "name" in options:
+                    feedforward["name"] = True
             else:
                 print("Unrecognized option '{}'".format(self.cleanline))
         #copy the state we set
@@ -140,33 +144,35 @@ class Line():
 
             if self.flags["cxor"] and cxor_string.match(self.cleanline):
                 self.flags["cxor_mark"] = True
-            #handle all function mod checks
-            if function_name.match(self.cleanline):
-                parts = function_name.search(self.cleanline)
-                func = parts.group(1)
-                #track every thing that gets called
-                if func not in multifile["funcs"]:
-                    multifile["funcs"].append(func)
 
-                #track every thing that gets called
-                if self.flags["mangle"]:
-                    self.flags["mangle_mark"] = func
-                    if func not in multifile["mangle"]:
-                        multifile["mangle"].append(func)
+        if function_name.match(self.cleanline):
+            parts = function_name.search(self.cleanline)
+            func = parts.group(1)
+            #track every thing that gets called
+            if func not in multifile["funcs"]:
+                multifile["funcs"].append(func)
 
 
         #last feed checks are for next line affecting pragmas
-        if "signature" in lastfeed:
-            if function_name.match(self.cleanline):
-                parts = function_name.search(self.cleanline)
-                func = parts.group(1)
-                self.flags["signature_mark"] = func
-                if func not in multifile["funcs"]:
-                    multifile["funcs"].append(func)
-                params = isolate_params(self.cleanline)
-                #TODO build the reorderer and record that this function needs shuffling
-            else:
-                print("failed to apply signature: '{}'".format(self.line))
+        if "mangle" in lastfeed:
+            if "params" in lastfeed:
+                if function_name.match(self.cleanline):
+                    parts = function_name.search(self.cleanline)
+                    func = parts.group(1)
+                    self.flags["signature_mark"] = func
+                    if func not in multifile["funcs"]:
+                        multifile["funcs"].append(func)
+                    params = isolate_params(self.cleanline)
+                    #TODO build the reorderer and record that this function needs shuffling
+                else:
+                    print("failed to apply signature: '{}'".format(self.line))
+                    print("consider typedefing complex return types")
+            if "name" in lastfeed:
+                if function_name.match(self.cleanline):
+                    parts = function_name.search(self.cleanline)
+                    func = parts.group(1)
+                    if func not in multifile["mangle"]:
+                        multifile["mangle"].append(func)
 
 
         return feedforward
