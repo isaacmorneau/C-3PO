@@ -3,8 +3,8 @@ import re, secrets, sys
 
 #TODO replace regex with a lexer that isnt pattern based ()
 cxor_string = re.compile('^[\s]*#define ([a-zA-Z0-9_]+) "(.*)"')
-mangle_function_string = re.compile('.*[\s]+([a-zA-Z_][a-zA-Z0-9_]*)\(.*')
-
+function_name = re.compile('.*[\s]+([a-zA-Z_][a-zA-Z0-9_]*)\(.*')
+#TODO allow the combination of multiple directives on a single line
 c3po_common_match = re.compile('^[\s]*#pragma[\s]+c3po[\s]+([a-z]+)(\((.+)\))?[\s]*(.*)')
 
 #asmlbl = """
@@ -47,6 +47,26 @@ def flag_toggle(name, toggle, flags):
                 return False
     return
 
+def isolate_params(line):
+    args = [""]
+    preparams = True
+    scope = 0
+    for c in reversed(line):
+        if c == ')':
+            scope += 1
+            if scope == 1:
+                continue
+        elif c == '(':
+            scope -= 1
+            if scope == 0:
+                break
+
+        if c == ',' and scope == 1:
+            args.append("")
+        elif scope > 0:
+            args[-1] = c + args[-1]
+    return [arg.strip() for arg in reversed(args)]
+
 class Line():
     def __init__(self, index, rawline):
         self.line = rawline
@@ -59,7 +79,8 @@ class Line():
     def __str__(self):
         return "{}:{}:{}".format(self.index, self.flags.items(), self.cleanline)
 
-    def classify(self, flags, multiline, multifile):
+    def classify(self, flags, multiline, multifile, lastfeed):
+        feedforward = {}
         #do all pragama matches first
         if c3po_common_match.match(self.cleanline):
             self.isflag = True
@@ -95,12 +116,15 @@ class Line():
                     multiline["shuffle"][-1][1] = self.index
             elif name == "case":
                 multiline["shuffle"][-1][2].append([])
+            elif name == "signature":
+                feedforward["signature"] = True
             else:
                 print("Unrecognized option '{}'".format(self.cleanline))
         #copy the state we set
         self.flags = dict(flags)
 
         #mark lines for future resolution
+        #this is for multiline blocks as well not for single line pragmas
         if not self.isflag:
             if self.flags["shuffle"]:
                 multiline["shuffle"][-1][2][-1].append(self)
@@ -116,12 +140,36 @@ class Line():
 
             if self.flags["cxor"] and cxor_string.match(self.cleanline):
                 self.flags["cxor_mark"] = True
-            if self.flags["mangle"] and mangle_function_string.match(self.cleanline):
-                parts = mangle_function_string.search(self.cleanline)
+            #handle all function mod checks
+            if function_name.match(self.cleanline):
+                parts = function_name.search(self.cleanline)
                 func = parts.group(1)
-                self.flags["mangle_mark"] = func
-                if func not in multifile["mangle"]:
-                    multifile["mangle"].append(func)
+                #track every thing that gets called
+                if func not in multifile["funcs"]:
+                    multifile["funcs"].append(func)
+
+                #track every thing that gets called
+                if self.flags["mangle"]:
+                    self.flags["mangle_mark"] = func
+                    if func not in multifile["mangle"]:
+                        multifile["mangle"].append(func)
+
+
+        #last feed checks are for next line affecting pragmas
+        if "signature" in lastfeed:
+            if function_name.match(self.cleanline):
+                parts = function_name.search(self.cleanline)
+                func = parts.group(1)
+                self.flags["signature_mark"] = func
+                if func not in multifile["funcs"]:
+                    multifile["funcs"].append(func)
+                params = isolate_params(self.cleanline)
+                #TODO build the reorderer and record that this function needs shuffling
+            else:
+                print("failed to apply signature: '{}'".format(self.line))
+
+
+        return feedforward
 
     def resolve(self, multiline, multifile, shatterself, shatterother):
         for key, value in multifile["mangle_match"].items():

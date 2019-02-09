@@ -78,8 +78,9 @@ class File():
         return "[{}:{}]".format(len(self.lines), self.srcpath)
 
     def classify(self, multifile):
+        forward = {}
         for line in self.lines:
-            line.classify(self.flags, self.multiline, multifile)
+            forward = line.classify(self.flags, self.multiline, multifile, forward)
 
     def resolve(self, multifile):
         #this collapses the shuffled lines before the rest of resolution

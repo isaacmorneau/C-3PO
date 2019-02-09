@@ -23,6 +23,7 @@ class Project():
         self.multifile = {
             "mangle":[],
             "mangle_match":{},
+            "funcs":[],
         }
         #load all the files in one go just making sure they are c and real
         self.files = [File(index, os.path.join(srcpath, file), os.path.join(dstpath, file)) for index, file in enumerate(os.listdir(srcpath)) if os.path.isfile(os.path.join(srcpath, file)) and (file.endswith(".c") or file.endswith(".h"))]

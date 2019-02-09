@@ -20,6 +20,9 @@ void say_hi(const char *msg) {
     a++;
 }
 
+#pragma c3po signature
+void (*)(void) crazyfunc(int (a), int b, ...);
+
 int main(void) {
     c3po_zero_elf();
 
