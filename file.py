@@ -13,6 +13,8 @@ trueline = re.compile(r'^.*[){;}\\]$')
 shittyline = re.compile(r'\s*{')
 #includes and pragmas
 pragmaline = re.compile(r'^\s*#.*$')
+#cleanup lines that will be joined
+prejoin = re.compile(r'^\s*(?=\s)')
 
 def simplify(fulldata):
     simplelines = []
@@ -21,17 +23,17 @@ def simplify(fulldata):
         stripped = lineextra.sub("", line, 1)
         if not blankline.match(stripped):
             if shittyline.match(stripped):
-                simplelines[-1] += stripped
+                simplelines[-1] += prejoin.sub("", stripped, 1)
                 joining = False
             elif trueline.match(stripped) or pragmaline.match(stripped):
                 if joining:
-                    simplelines[-1] += stripped
+                    simplelines[-1] += prejoin.sub("", stripped, 1)
                     joining = False
                 else:
                     simplelines.append(stripped)
             else:
                 if joining:
-                    simplelines[-1] += stripped
+                    simplelines[-1] += prejoin.sub("", stripped, 1)
                 else:
                     simplelines.append(stripped)
                     joining = True

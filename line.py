@@ -19,8 +19,7 @@ asmlbljmp = """
         "jz .done{0};"
         "{2} .shatter{1};"
         ".done{0}:"
-        :::"%eax");
-"""# me, you, type
+        :::"%eax");"""# me, you, type
 
 def state_matcher(line):
     parts = c3po_common_match.search(line)
