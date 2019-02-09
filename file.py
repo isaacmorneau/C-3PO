@@ -1,18 +1,40 @@
 from line import Line
 import random, re
 
+#lines with only whitespace
 blankline = re.compile(r'^\s*$')
+#multiline comments
 multiline = re.compile(r'/\*.*?\*/', re.MULTILINE | re.DOTALL)
-comment = re.compile(r'\s*//.*')
-trailingwhite = re.compile(r'\s*$')
-trueline = re.compile(r'[{;]$')
+#singleline comments and trailing white space
+lineextra = re.compile(r'\s*(//.*)?$')
+#shouldn't join the last line
+trueline = re.compile(r'^.*[){;}\\]$')
+#someone uses alman style
+shittyline = re.compile(r'\s*{')
+#includes and pragmas
+pragmaline = re.compile(r'^\s*#.*$')
+
 def simplify(fulldata):
     simplelines = []
+    joining = False
     for line in multiline.sub("", fulldata).split("\n"):
-        stripped = trailingwhite("", comment.sub("", line, 1), 1)
+        stripped = lineextra.sub("", line, 1)
         if not blankline.match(stripped):
-            print(stripped)
-            simplelines.append(stripped)
+            if shittyline.match(stripped):
+                simplelines[-1] += stripped
+                joining = False
+            elif trueline.match(stripped) or pragmaline.match(stripped):
+                if joining:
+                    simplelines[-1] += stripped
+                    joining = False
+                else:
+                    simplelines.append(stripped)
+            else:
+                if joining:
+                    simplelines[-1] += stripped
+                else:
+                    simplelines.append(stripped)
+                    joining = True
     return simplelines
 
 class File():

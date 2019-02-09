@@ -176,4 +176,4 @@ class Line():
         if self.isflag:
             return
         else:
-            file.write(self.line)
+            file.write(self.line+"\n")
