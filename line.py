@@ -126,7 +126,7 @@ class Line():
                 if "name" in options:
                     feedforward["name"] = True
             else:
-                print("Unrecognized option '{}'".format(self.cleanline))
+                print("Unrecognized option '{}'".format(self.cleanline), file=sys.stderr)
         #copy the state we set
         self.flags = dict(flags)
 
@@ -177,8 +177,8 @@ class Line():
                             multifile["mangle"][func].append("name")
                             #TODO build the new name record it in the global func mangling table
                 else:
-                    print("Unable to apply mangling to signature: '{}'".format(self.line))
-                    print("Consider typedef for complex return types")
+                    print("Unable to apply mangling to signature: '{}'".format(self.line), file=sys.stderr)
+                    print("Consider typedef for complex types", file=sys.stderr)
 
 
         return feedforward
