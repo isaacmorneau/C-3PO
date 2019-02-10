@@ -5,6 +5,8 @@ import re, secrets, sys
 cxor_string = re.compile('^[\s]*#define ([a-zA-Z0-9_]+) "(.*)"')
 #basically anything thats being called `asdf(` or `this_func (`
 function_name = re.compile('([a-zA-Z_][a-zA-Z0-9_]*)\s*\(.*')
+#i refuse to parse this
+unsupported_function = re.compile('\(\s*\*[a-zA-Z_][a-zA-Z0-9_]*\s*\(.*')
 #TODO allow the combination of multiple directives on a single line
 c3po_common_match = re.compile('^[\s]*#pragma[\s]+c3po[\s]+([a-z]+)(\((.+)\))?[\s]*(.*)')
 
@@ -148,7 +150,7 @@ class Line():
 
             #track every thing that gets called
             parts = function_name.search(self.cleanline)
-            if parts:
+            if parts and not unsupported_function.search(self.cleanline):
                 func = parts.group(1)
                 if func not in ["if", "while", "for"]:
                     #this is a function mark it for resolution pass
@@ -160,7 +162,7 @@ class Line():
                 self.flags["mangle"] = []
                 #ensure the function is parsable
                 parts = function_name.search(self.cleanline)
-                if parts:
+                if parts and not unsupported_function.search(self.cleanline):
                     func = parts.group(1)
                     if func not in ["if", "while", "for"]:
                         #log what operations to apply to fuinctions globally
@@ -175,8 +177,8 @@ class Line():
                             multifile["mangle"][func].append("name")
                             #TODO build the new name record it in the global func mangling table
                 else:
-                    print("failed to apply signature: '{}'".format(self.line))
-                    print("consider typedef for complex return types")
+                    print("Unable to apply mangling to signature: '{}'".format(self.line))
+                    print("Consider typedef for complex return types")
 
 
         return feedforward
