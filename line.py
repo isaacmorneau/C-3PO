@@ -3,7 +3,8 @@ import re, secrets, sys
 
 #TODO replace regex with a lexer that isnt pattern based ()
 cxor_string = re.compile('^[\s]*#define ([a-zA-Z0-9_]+) "(.*)"')
-function_name = re.compile('.*[\s]+([a-zA-Z_][a-zA-Z0-9_]*)\(.*')
+#basically anything thats being called `asdf(` or `this_func (`
+function_name = re.compile('([a-zA-Z_][a-zA-Z0-9_]*)\s*\(.*')
 #TODO allow the combination of multiple directives on a single line
 c3po_common_match = re.compile('^[\s]*#pragma[\s]+c3po[\s]+([a-z]+)(\((.+)\))?[\s]*(.*)')
 
@@ -145,34 +146,37 @@ class Line():
             if self.flags["cxor"] and cxor_string.match(self.cleanline):
                 self.flags["cxor_mark"] = True
 
-        if function_name.match(self.cleanline):
-            parts = function_name.search(self.cleanline)
-            func = parts.group(1)
             #track every thing that gets called
-            if func not in multifile["funcs"]:
-                multifile["funcs"].append(func)
+            parts = function_name.search(self.cleanline)
+            if parts:
+                func = parts.group(1)
+                if func not in ["if", "while", "for"]:
+                    #this is a function mark it for resolution pass
+                    self.flags["func_mark"] = True
 
 
-        #last feed checks are for next line affecting pragmas
-        if "mangle" in lastfeed:
-            if "params" in lastfeed:
-                if function_name.match(self.cleanline):
-                    parts = function_name.search(self.cleanline)
+            #last feed checks are for next line affecting pragmas
+            if "mangle" in lastfeed:
+                self.flags["mangle"] = []
+                #ensure the function is parsable
+                parts = function_name.search(self.cleanline)
+                if parts:
                     func = parts.group(1)
-                    self.flags["signature_mark"] = func
-                    if func not in multifile["funcs"]:
-                        multifile["funcs"].append(func)
-                    params = isolate_params(self.cleanline)
-                    #TODO build the reorderer and record that this function needs shuffling
+                    if func not in ["if", "while", "for"]:
+                        #log what operations to apply to fuinctions globally
+                        if func not in multifile["mangle"]:
+                            multifile["mangle"][func] = []
+
+                        if "params" in lastfeed:
+                            multifile["mangle"][func].append("params")
+                            params = isolate_params(self.cleanline)
+                            #TODO build the reordered signature and record it in the global func mangling table
+                        if "name" in lastfeed:
+                            multifile["mangle"][func].append("name")
+                            #TODO build the new name record it in the global func mangling table
                 else:
                     print("failed to apply signature: '{}'".format(self.line))
-                    print("consider typedefing complex return types")
-            if "name" in lastfeed:
-                if function_name.match(self.cleanline):
-                    parts = function_name.search(self.cleanline)
-                    func = parts.group(1)
-                    if func not in multifile["mangle"]:
-                        multifile["mangle"].append(func)
+                    print("consider typedef for complex return types")
 
 
         return feedforward

@@ -20,16 +20,17 @@ class Project():
      C PrePreProcessor
         Obfuscator""")
         self.files = []
+
         self.multifile = {
-            "mangle":[],
+            #function name: [list of operations]
+            "mangle":{},
+            #function name: replacement name
             "mangle_match":{},
-            "funcs":[],
+            #function name: [shuffle order of params]
+            "mangle_params":{},
         }
         #load all the files in one go just making sure they are c and real
         self.files = [File(index, os.path.join(srcpath, file), os.path.join(dstpath, file)) for index, file in enumerate(os.listdir(srcpath)) if os.path.isfile(os.path.join(srcpath, file)) and (file.endswith(".c") or file.endswith(".h"))]
-        #TODO at some point do incremental builds
-        #for file in files:
-        #    if not os.path.exists(file[2]) or os.path.getmtime(file[1]) > os.path.getmtime(file[2]):
 
     #this performs the inital tokenization and collection of info
     #this will find the positions for future resolution
@@ -39,8 +40,13 @@ class Project():
             print("    {}".format(file))
             file.classify(self.multifile)
         #mangle to match ida or binja labels
-        for func in self.multifile["mangle"]:
-            self.multifile["mangle_match"][func+"("] = "sub_"+"".join("{:02x}".format(t) for t in secrets.token_bytes(2))+"("
+        for func, ops in self.multifile["mangle"].items():
+            if "name" in ops:
+                self.multifile["mangle_match"][func+"("] = "sub_"+"".join("{:02x}".format(t) for t in secrets.token_bytes(2))+"("
+            if "params" in ops:
+                #TODO actually parse and generate a shuffle order
+                #this is also where a variadic functions should be added
+                print("func {}".format(func))
 
     #this will now chose what should be resolved in things such as the
     #asm labels to be chosen globally

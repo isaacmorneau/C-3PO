@@ -20,6 +20,13 @@ void say_hi(const char *msg) {
     a++;
 }
 
+
+#pragma c3po mangle(params, name)
+int scoper(int s, int v) {
+    (void)v;
+    return s;
+}
+
 //TODO currently unsupported
 #pragma c3po mangle(params)
 void (*crazyfunc(int (a), int b, ...));
@@ -27,6 +34,7 @@ void (*crazyfunc(int (a), int b, ...));
 int main(void) {
     c3po_zero_elf();
 
+    scoper(scoper(1,scoper(2,3)),4);
 
 #pragma c3po shatter(call, high) enable
     int i = 0;

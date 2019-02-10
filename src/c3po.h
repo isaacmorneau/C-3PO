@@ -2,7 +2,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#pragma c3po mangle enable
 
 //extract the c string for the encrypted text via simple xor with embeded key
 //expects [encrypted cstring][xor key1 for cstring][xor key2 for cstring]
@@ -10,13 +9,13 @@
 //be performed manually
 //TODO find a way to ensure that c strings are decrypted at run time instead of compile time
 //      seems that only clang can figure it out
+#pragma c3po mangle(name)
 void c3po_str_xor(const uint8_t *base, uint8_t *key1, const uint8_t *key2, char *decrypted, size_t len);
 
 //a wonderful hack from the talk by int0x80 on anti forensics AF - defcon 24
 //this little mess is designed to cause issues for analysis tools
+#pragma c3po mangle(name)
 void c3po_zero_elf();
-
-#pragma c3po mangle disable
 
 //this is to support debug and generated modes
 //example usage
