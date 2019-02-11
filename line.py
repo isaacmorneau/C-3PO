@@ -35,25 +35,44 @@ def state_matcher(line):
     return name, options, toggle
 
 #turn foo(bar, baz) into ['bar', 'baz']
-def isolate_params(line):
+def param_edit(line, reorder=None):
     args = [""]
     preparams = True
     scope = 0
+    passthrough = None
+    trailing = ""
     for c in reversed(line):
+        if passthrough:
+            passthrough = c + passthrough
+            continue
         if c == ')':
             scope += 1
             if scope == 1:
+                trailing += ')'
                 continue
         elif c == '(':
             scope -= 1
             if scope == 0:
-                break
-
+                if reorder == None:
+                    #just extract the args
+                    return [arg.strip() for arg in reversed(args)]
+                else:
+                    #collapse reorder the params
+                    newarray = []
+                    for r in reorder:
+                        newarray.append(args[len(args) - 1 - r].strip())
+                    passthrough = '(' + ", ".join(newarray) + ''.join(c for c in reversed(trailing))
         if c == ',' and scope == 1:
             args.append("")
         elif scope > 0:
             args[-1] = c + args[-1]
-    return [arg.strip() for arg in reversed(args)]
+        else:
+            trailing += c
+
+    if passthrough:
+        return passthrough
+    else:
+        print("Failed to parse function '{}', is this valid c?".format(line), file=sys.stderr)
 
 #turn directive1(opt1, opt2) directive2(opt1) into {"directive1":["opt1", "opt2"], "directive2":["opt1"]}
 def pragma_split(line):
@@ -216,7 +235,7 @@ class Line():
 
                     if "params" in lastfeed:
                         multifile["mangle"][func].append("params")
-                        params = isolate_params(self.cleanline)
+                        params = param_edit(self.cleanline)
                         multifile["mangle_params"][func] = [i for i,v in enumerate(params)]
                         random.shuffle(multifile["mangle_params"][func])
                         print(params)
@@ -233,6 +252,11 @@ class Line():
         for key, value in multifile["mangle_match"].items():
             if key in self.line:
                 self.line = self.line.replace(key, value)
+        for key, value in multifile["mangle_params"].items():
+            if key in self.line:
+                newline = param_edit(self.line, value)
+                print(newline)
+
 
         if "cxor_mark" in self.flags and self.flags["cxor_mark"]:
             parts = cxor_string.search(self.cleanline)
