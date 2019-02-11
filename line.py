@@ -122,8 +122,10 @@ def shatter(options, flags):
 
 def shuffle(options, flags, index, multiline):
     if "on" in options:
+        flags["shuffle"] = True
         multiline["shuffle"].append([index, index, [[]]])
     elif "off" in options:
+        flags["shuffle"] = False
         multiline["shuffle"][-1][1] = index
     else:
         print("Shuffle not turned on or off, unused directive", file=sys.stderr)
@@ -173,10 +175,10 @@ class Line():
         #mark lines for future resolution
         #this is for multiline blocks as well not for single line pragmas
         if not self.isflag:
-            self.flagless_line(lastfeed, multifile)
+            self.flagless_line(lastfeed, multiline, multifile)
         return feedforward
 
-    def flagless_line(self, lastfeed, multifile):
+    def flagless_line(self, lastfeed, multiline, multifile):
         if self.flags["shuffle"]:
             multiline["shuffle"][-1][2][-1].append(self)
 
@@ -199,7 +201,6 @@ class Line():
             if func not in ["if", "while", "for"]:
                 #this is a function mark it for resolution pass
                 self.flags["func_mark"] = True
-
 
         #last feed checks are for next line affecting pragmas
         if "mangle" in lastfeed:

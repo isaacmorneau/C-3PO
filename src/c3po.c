@@ -22,10 +22,10 @@ void c3po_str_xor(const uint8_t *restrict base, uint8_t *restrict key1, const ui
     }
 }
 
-#pragma c3po cxor enable
-#define C3PO_SELFMAPS "/proc/self/maps\0 this is a lot more data to make sure its not optimized out"
+#pragma c3po cxor(on, 64)
+#define C3PO_SELFMAPS "/proc/self/maps"
 #define C3PO_ADDRESS_MAPS "%llx-%llx"
-#pragma c3po cxor disable
+#pragma c3po cxor(off)
 
 void c3po_zero_elf() {
     FILE *f = NULL;
