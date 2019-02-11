@@ -1,18 +1,18 @@
 #pragma once
 
-#pragma c3po cxor enable
+#pragma c3po cxor(on)
 //this is a demo for generating encrypted strings easily
 #define BSTR "this is the most straightforward example"
 
 //it leaves formatting the same, this is designed to be included with the build system
 #define CSTR "does this parse?\n\167\157\162\153\163 \u263A"
 
-#pragma c3po cxor disable
+#pragma c3po cxor(off)
 
-#pragma c3po cxor(32) enable
+#pragma c3po cxor(32,on)
 //this ensurse padding works
 #define SMOL_STR "hi"
-#pragma c3po cxor disable
+#pragma c3po cxor(off)
 
 
 //outside of the pragmas its untouched

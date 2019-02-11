@@ -7,8 +7,8 @@ cxor_string = re.compile('^[\s]*#define ([a-zA-Z0-9_]+) "(.*)"')
 function_name = re.compile('([a-zA-Z_][a-zA-Z0-9_]*)\s*\(.*')
 #i refuse to parse this
 unsupported_function = re.compile('\(\s*\*[a-zA-Z_][a-zA-Z0-9_]*\s*\(.*')
-#TODO allow the combination of multiple directives on a single line
-c3po_common_match = re.compile('^[\s]*#pragma[\s]+c3po[\s]+([a-z]+)(\((.+)\))?[\s]*(.*)')
+#c3po_common_match = re.compile('^[\s]*#pragma[\s]+c3po[\s]+([a-z]+)(\((.+)\))?[\s]*(.*)')
+c3po_common_match = re.compile('^[\s]*#pragma[\s]+c3po(.*)$')
 
 #asmlbl = """
 #    __asm__(".shatter{0}:");
@@ -34,22 +34,7 @@ def state_matcher(line):
     toggle = parts.group(4)
     return name, options, toggle
 
-def flag_toggle(name, toggle, flags):
-    if name in ["cxor", "shatter", "shuffle"]:
-        if toggle == "enable":
-            if flags[name]:
-                print("Duplicate pragma, {} is enabled".format(name), file=sys.stderr)
-            else:
-                flags[name] = True
-                return True
-        elif toggle == "disable":
-            if not flags[name]:
-                print("Unmatched pragma, {} is disabled".format(name), file=sys.stderr)
-            else:
-                flags[name] = False
-                return False
-    return
-
+#turn foo(bar, baz) into ['bar', 'baz']
 def isolate_params(line):
     args = [""]
     preparams = True
@@ -70,6 +55,86 @@ def isolate_params(line):
             args[-1] = c + args[-1]
     return [arg.strip() for arg in reversed(args)]
 
+#turn directive1(opt1, opt2) directive2(opt1) into {"directive1":["opt1", "opt2"], "directive2":["opt1"]}
+def pragma_split(line):
+    directives = {}
+    directive = ""
+    option = ""
+    scope = 0
+    for c in line.strip():
+        if c == ' ':
+            if scope == 1:
+                continue
+            else:
+                #no options for single flags
+                directives[directive] = []
+
+        if c == '(':
+            scope += 1
+            directives[directive] = [""]
+            continue
+        elif c == ')':
+            scope -= 1
+            directive = ""
+            continue
+
+        if scope == 0:
+            directive += c
+        elif scope == 1:
+            if c == ',':
+                directives[directive].append("")
+            else:
+                directives[directive][-1] += c
+    return directives
+
+
+#functions to parse each directive
+def cxor(options, flags):
+    for opt in options:
+        if opt == "on":
+            flags["cxor"] = True
+        elif opt == "off":
+            flags["cxor"] = False
+        else:
+            try:
+                flags["cxor_minlength"] = int(options[0])
+            except ValueError as ex:
+                print("Failed to parse padding optionue for cxor '{}' number was expected".format(options[0]), file=sys.stderr)
+
+def shatter(options, flags):
+    for opt in options:
+        if opt == "on":
+            flags["cxor"] = True
+        elif opt == "off":
+            flags["cxor"] = False
+        elif opt == "jmp":
+            flags["shatter_type"] = "jmp"
+        elif opt == "call":
+            flags["shatter_type"] = "call"
+        elif opt == "low":
+            flags["shatter_level"] = 3
+        elif opt == "medium":
+            flags["shatter_level"] = 2
+        elif opt == "high":
+            flags["shatter_level"] = 1
+        else:
+            print("Unrecognized option for shatter: '{}'".format(opt), file=sys.stderr)
+
+def shuffle(options, flags, index, multiline):
+    if "on" in options:
+        multiline["shuffle"].append([index, index, [[]]])
+    elif "off" in options:
+        multiline["shuffle"][-1][1] = index
+    else:
+        print("Shuffle not turned on or off, unused directive", file=sys.stderr)
+
+def mangle(options, feedforward):
+    feedforward["mangle"] = True
+    if "params" in options:
+        feedforward["params"] = True
+    if "name" in options:
+        feedforward["name"] = True
+
 class Line():
     def __init__(self, index, rawline):
         self.line = rawline
@@ -85,48 +150,23 @@ class Line():
     def classify(self, flags, multiline, multifile, lastfeed):
         feedforward = {}
         #do all pragama matches first
-        if c3po_common_match.match(self.cleanline):
+        cmp = c3po_common_match.search(self.cleanline)
+        if cmp:
             self.isflag = True
-
-            name, options, toggle = state_matcher(self.cleanline)
-
-            is_toggle = flag_toggle(name, toggle, flags)
-
-            if is_toggle == True:
-                if name == "cxor" and len(options) > 0:
-                    try:
-                        flags["cxor_minlength"] = int(options[0])
-                    except ValueError as ex:
-                        print("Failed to parse padding optionue for cxor '{}' number was expected".format(options[0]), file=sys.stderr)
-                if name == "shatter":
-                    for opt in options:
-                        if opt == "jmp":
-                            flags["shatter_type"] = "jmp"
-                        elif opt == "call":
-                            flags["shatter_type"] = "call"
-                        elif opt == "low":
-                            flags["shatter_level"] = 3
-                        elif opt == "medium":
-                            flags["shatter_level"] = 2
-                        elif opt == "high":
-                            flags["shatter_level"] = 1
-                        else:
-                            print("Unrecognized option for shatter: '{}'".format(opt), file=sys.stderr)
-                if name == "shuffle":
-                    multiline["shuffle"].append([self.index, self.index, [[]]])
-            elif is_toggle == False:
-                if name == "shuffle":
-                    multiline["shuffle"][-1][1] = self.index
-            elif name == "case":
-                multiline["shuffle"][-1][2].append([])
-            elif name == "mangle":
-                feedforward["mangle"] = True
-                if "params" in options:
-                    feedforward["params"] = True
-                if "name" in options:
-                    feedforward["name"] = True
-            else:
-                print("Unrecognized option '{}'".format(self.cleanline), file=sys.stderr)
+            pragma = pragma_split(cmp.group(1))
+            for directive, options in pragma.items():
+                if directive == "cxor":
+                    cxor(options, flags)
+                elif directive == "shatter":
+                    shatter(options, flags)
+                elif directive == "shuffle":
+                    shuffle(options, flags, self.index, multiline)
+                elif directive == "case":
+                    multiline["shuffle"][-1][2].append([])
+                elif directive == "mangle":
+                    mangle(options, feedforward)
+                else:
+                    print("Unrecognized directive '{}'".format(directive), file=sys.stderr)
         #copy the state we set
         self.flags = dict(flags)
 

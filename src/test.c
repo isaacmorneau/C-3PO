@@ -36,14 +36,14 @@ int main(void) {
 
     scoper(scoper(1,scoper(2,3)),4);
 
-#pragma c3po shatter(call, high) enable
+#pragma c3po shatter(call, high, on)
     int i = 0;
 
     for (int j = 0; j < 40; ++j) {
         supercall(j);
     }
 
-#pragma c3po shuffle enable
+#pragma c3po shuffle(on)
 
     i += 3245;
     C3PO_STR(printf("decoded '%s'\n", c3po_str), BSTR);
@@ -63,11 +63,11 @@ int main(void) {
     i <<= 3;
     puts("1");
 
-#pragma c3po shuffle disable
+#pragma c3po shuffle(off)
 
     printf("i:%d\n", i);
 
-#pragma c3po shatter disable
+#pragma c3po shatter(off)
 
     return 0;
 }
