@@ -97,9 +97,9 @@ def cxor(options, flags):
             flags["cxor"] = False
         else:
             try:
-                flags["cxor_minlength"] = int(options[0])
+                flags["cxor_minlength"] = int(opt)
             except ValueError as ex:
-                print("Failed to parse padding optionue for cxor '{}' number was expected".format(options[0]), file=sys.stderr)
+                print("Failed to parse padding optionue for cxor '{}' number was expected".format(opt), file=sys.stderr)
 
 def shatter(options, flags):
     for opt in options:
