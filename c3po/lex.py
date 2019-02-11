@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import string, unittest
 
-def has_func(line):
+def is_function(line):
     if '(' not in line:
         return False
 
@@ -20,63 +20,90 @@ def has_func(line):
             current_token += c
             token = True
         elif c == '(' and current_token not in "ifwhile":
-                return True
+            return True
         else:
             current_token = ""
             token = False
     return False
 
-def get_params(name, line):
-    if name not in line:
+def has_function(name, line):
+    if '(' not in line:
         return False
 
-    args = [""]
-    preparams = True
-    scope = 0
-    passthrough = None
-    trailing = ""
-    for c in reversed(line):
-        if passthrough:
-            passthrough = c + passthrough
+    token = False
+    was_space = False
+    current_token = ""
+
+    for c in line:
+        if c == ' ':
+            was_space = True
             continue
-        if c == ')':
+        if was_space:
+            current_token = ""
+            was_space = False
+        if c in string.ascii_letters:
+            current_token += c
+            token = True
+        elif c == '(' and current_token not in "ifwhile":
+            if current_token == name:
+                return True
+            else:
+                current_token = ""
+        else:
+            current_token = ""
+            token = False
+    return False
+
+
+def get_function_arguments(name, line):
+    if name not in line:
+        return None
+
+    args = [""]
+    scope = 0
+    relevant = line[line.index(name)+len(name):]
+    for c in relevant:
+        if c == '(':
             scope += 1
             if scope == 1:
-                trailing += ')'
+                #first open brace
                 continue
-        elif c == '(':
+        elif c == ')':
             scope -= 1
             if scope == 0:
-                if reorder == None:
-                    #just extract the args
-                    return [arg.strip() for arg in reversed(args)]
-                else:
-                    #collapse reorder the params
-                    newarray = []
-                    for r in reorder:
-                        newarray.append(args[len(args) - 1 - r].strip())
-                    passthrough = '(' + ", ".join(newarray) + ''.join(c for c in reversed(trailing))
+                #last brace
+                return args
         if c == ',' and scope == 1:
             args.append("")
-        elif scope > 0:
-            args[-1] = c + args[-1]
-        else:
-            trailing += c
-
-    if passthrough:
-        return passthrough
-    else:
-        print("Failed to parse function '{}', is this valid c?".format(line), file=sys.stderr)
+        elif scope == 1 and c != ' ':
+            args[-1] += c
+        elif scope > 1:
+            args[-1] += c
+    raise Exception("Failed to extract params from '{}'".format(line))
 
 class LexTest(unittest.TestCase):
-    def test_function_match(self):
-        self.assertTrue(has_func("void foo();"))
-        self.assertTrue(has_func("int a = (int)foo();"))
+    def test_is_function(self):
+        self.assertTrue(is_function("void foo();"))
+        self.assertTrue(is_function("int a = (int)foo();"))
+        self.assertTrue(is_function("if (foo(bar(baz))) {"))
 
-    def test_non_functions(self):
-        self.assertFalse(has_func("//this is a comment"))
-        self.assertFalse(has_func("int a = (int)foo;"))
-        self.assertFalse(has_func("if (foo) {"))
+        self.assertFalse(is_function("//this is a comment"))
+        self.assertFalse(is_function("int a = (int)foo;"))
+        self.assertFalse(is_function("if (foo) {"))
+
+    def test_has_function(self):
+        self.assertTrue(has_function("foo", "void foo();"))
+        self.assertTrue(has_function("foo", "int a = (int)foo();"))
+        self.assertTrue(has_function("bar", "if (foo(bar(baz))) {"))
+
+        self.assertFalse(has_function("bar", "void foo();"))
+        self.assertFalse(has_function("int", "int a = (int)foo();"))
+        self.assertFalse(has_function("baz", "if (foo(bar(baz))) {"))
+
+    def test_get_params(self):
+        self.assertEquals(get_function_arguments("foo", "foo(bar, baz);"), ['bar', 'baz'])
+        self.assertEquals(get_function_arguments("bar", "if (foo(bar(baz))) {"), ["baz"])
+        self.assertEquals(get_function_arguments("foo", "while (foo(bar(baz, baz))) {"), ['bar(baz, baz)'])
 
 if __name__ == "__main__":
     unittest.main()
