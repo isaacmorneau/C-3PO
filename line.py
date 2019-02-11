@@ -249,13 +249,14 @@ class Line():
 
 
     def resolve(self, multiline, multifile, shatterself, shatterother):
+        #shuffle params first
+        for key, value in multifile["mangle_params"].items():
+            if key in self.line:
+                self.line = param_edit(self.line, value)
+        #break all the names
         for key, value in multifile["mangle_match"].items():
             if key in self.line:
                 self.line = self.line.replace(key, value)
-        for key, value in multifile["mangle_params"].items():
-            if key in self.line:
-                newline = param_edit(self.line, value)
-                print(newline)
 
 
         if "cxor_mark" in self.flags and self.flags["cxor_mark"]:
