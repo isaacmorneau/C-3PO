@@ -173,55 +173,57 @@ class Line():
         #mark lines for future resolution
         #this is for multiline blocks as well not for single line pragmas
         if not self.isflag:
-            if self.flags["shuffle"]:
-                multiline["shuffle"][-1][2][-1].append(self)
+            self.flagless_line(lastfeed, multifile)
+        return feedforward
 
-            if self.flags["shatter"]:
-                multiline["asm"]["total"] += 1
+    def flagless_line(self, lastfeed, multifile):
+        if self.flags["shuffle"]:
+            multiline["shuffle"][-1][2][-1].append(self)
 
-            #if we are in shatter mode tag lines that need to be replaced
-            if self.flags["shatter"] and self.index % self.flags["shatter_level"] == 0:
-                self.flags["shatter_mark"] = True
-                multiline["asm"]["indexes"].append(multiline["asm"]["index"])
-                multiline["asm"]["index"] += 1
+        if self.flags["shatter"]:
+            multiline["asm"]["total"] += 1
 
-            if self.flags["cxor"] and cxor_string.match(self.cleanline):
-                self.flags["cxor_mark"] = True
+        #if we are in shatter mode tag lines that need to be replaced
+        if self.flags["shatter"] and self.index % self.flags["shatter_level"] == 0:
+            self.flags["shatter_mark"] = True
+            multiline["asm"]["indexes"].append(multiline["asm"]["index"])
+            multiline["asm"]["index"] += 1
 
-            #track every thing that gets called
+        if self.flags["cxor"] and cxor_string.match(self.cleanline):
+            self.flags["cxor_mark"] = True
+
+        #track every thing that gets called
+        parts = function_name.search(self.cleanline)
+        if parts and not unsupported_function.search(self.cleanline):
+            func = parts.group(1)
+            if func not in ["if", "while", "for"]:
+                #this is a function mark it for resolution pass
+                self.flags["func_mark"] = True
+
+
+        #last feed checks are for next line affecting pragmas
+        if "mangle" in lastfeed:
+            self.flags["mangle"] = []
+            #ensure the function is parsable
             parts = function_name.search(self.cleanline)
             if parts and not unsupported_function.search(self.cleanline):
                 func = parts.group(1)
                 if func not in ["if", "while", "for"]:
-                    #this is a function mark it for resolution pass
-                    self.flags["func_mark"] = True
+                    #log what operations to apply to fuinctions globally
+                    if func not in multifile["mangle"]:
+                        multifile["mangle"][func] = []
 
+                    if "params" in lastfeed:
+                        multifile["mangle"][func].append("params")
+                        params = isolate_params(self.cleanline)
+                        #TODO build the reordered signature and record it in the global func mangling table
+                    if "name" in lastfeed:
+                        multifile["mangle"][func].append("name")
+                        #TODO build the new name record it in the global func mangling table
+            else:
+                print("Unable to apply mangling to signature: '{}'".format(self.line), file=sys.stderr)
+                print("Consider typedef for complex types", file=sys.stderr)
 
-            #last feed checks are for next line affecting pragmas
-            if "mangle" in lastfeed:
-                self.flags["mangle"] = []
-                #ensure the function is parsable
-                parts = function_name.search(self.cleanline)
-                if parts and not unsupported_function.search(self.cleanline):
-                    func = parts.group(1)
-                    if func not in ["if", "while", "for"]:
-                        #log what operations to apply to fuinctions globally
-                        if func not in multifile["mangle"]:
-                            multifile["mangle"][func] = []
-
-                        if "params" in lastfeed:
-                            multifile["mangle"][func].append("params")
-                            params = isolate_params(self.cleanline)
-                            #TODO build the reordered signature and record it in the global func mangling table
-                        if "name" in lastfeed:
-                            multifile["mangle"][func].append("name")
-                            #TODO build the new name record it in the global func mangling table
-                else:
-                    print("Unable to apply mangling to signature: '{}'".format(self.line), file=sys.stderr)
-                    print("Consider typedef for complex types", file=sys.stderr)
-
-
-        return feedforward
 
     def resolve(self, multiline, multifile, shatterself, shatterother):
         for key, value in multifile["mangle_match"].items():
