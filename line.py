@@ -238,8 +238,6 @@ class Line():
                         params = param_edit(self.cleanline)
                         multifile["mangle_params"][func] = [i for i,v in enumerate(params)]
                         random.shuffle(multifile["mangle_params"][func])
-                        print(params)
-                        #TODO build the reordered signature and record it in the global func mangling table
                     if "name" in lastfeed:
                         multifile["mangle"][func].append("name")
                         #TODO build the new name record it in the global func mangling table
