@@ -16,7 +16,11 @@ if __name__ == "__main__":
         print_help()
     elif len(sys.argv) == 2:
         if sys.argv[1] == "test":
-            unittest.main()
+            suite = unittest.TestSuite()
+            results = unittest.TestResult()
+            suite.addTest(unittest.makeSuite(LexTest))
+            runner = unittest.TextTestRunner()
+            print(runner.run(suite))
         else:
             print_help()
     elif len(sys.argv) == 3:
