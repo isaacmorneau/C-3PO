@@ -27,7 +27,7 @@ def is_function(line):
     return False
 
 def has_function(name, line):
-    if '(' not in line:
+    if '(' not in line or name not in line:
         return False
 
     token = False
@@ -99,6 +99,7 @@ class LexTest(unittest.TestCase):
         self.assertFalse(has_function("bar", "void foo();"))
         self.assertFalse(has_function("int", "int a = (int)foo();"))
         self.assertFalse(has_function("baz", "if (foo(bar(baz))) {"))
+        self.assertFalse(has_function("the godfather", "if (foo(bar(baz))) {"))
 
     def test_get_params(self):
         self.assertEquals(get_function_arguments("foo", "foo(bar, baz);"), ['bar', 'baz'])

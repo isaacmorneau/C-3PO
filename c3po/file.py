@@ -1,5 +1,5 @@
 from .line import Line
-import random, re
+import random, re, unittest
 
 #lines with only whitespace
 blankline = re.compile(r'^\s*$')
@@ -38,6 +38,19 @@ def simplify(fulldata):
                     simplelines.append(stripped)
                     joining = True
     return simplelines
+
+class FileTest(unittest.TestCase):
+    def test_simplify(self):
+        self.assertEqual('\n'.join(simplify(
+"""int scoper(int s, int v)
+{
+    //so much
+    (void)v;/* garbage */
+    return s;
+}""")),"""int scoper(int s, int v){
+    (void)v;
+    return s;
+}""")
 
 class File():
     def __init__(self, index, srcpath, dstpath):

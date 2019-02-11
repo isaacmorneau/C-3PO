@@ -22,8 +22,10 @@ void say_hi(const char *msg) {
 
 
 #pragma c3po mangle(params, name)
-int scoper(int s, int v) {
-    (void)v;
+int scoper(int s, int v)
+{
+    //so much
+    (void)v;/* garbage */
     return s;
 }
 

@@ -5,6 +5,7 @@ import sys
 import os
 from c3po.project import Project
 from c3po.lex import LexTest
+from c3po.file import FileTest
 import unittest
 
 if __name__ == "__main__":
@@ -19,6 +20,7 @@ if __name__ == "__main__":
             suite = unittest.TestSuite()
             results = unittest.TestResult()
             suite.addTest(unittest.makeSuite(LexTest))
+            suite.addTest(unittest.makeSuite(FileTest))
             runner = unittest.TextTestRunner()
             print(runner.run(suite))
         else:
