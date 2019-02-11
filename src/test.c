@@ -27,6 +27,9 @@ int scoper(int s, int v) {
     return s;
 }
 
+#pragma c3po mangle(params)
+void thing(int a, int *b, char c, char *d, double e, double *f);
+
 //TODO currently unsupported
 #pragma c3po mangle(params)
 void (*crazyfunc(int (a), int b, ...));

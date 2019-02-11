@@ -3,22 +3,22 @@ import os, secrets
 
 class Project():
     def __init__(self, srcpath, dstpath):
-        print("""
+        print("""\033[33;m
             /~\\
-           |o o)  C-3PO
+           |\033[;mo o\033[33;m)  C-3PO
            _\=/_
-      #   /  _  \   #
-       \\\\//|/.\|\\\\//
-        \/  \_/  \/
+      #   /  _  \033[31;m\   #\033[33;m
+       \\\\//|/.\\|\033[31;m\\\\//\033[33;m
+        \/  \\\033[30;m_\033[33;m/\033[31;m  \/\033[33;m
            |\ /|
            \_ _/
            | | |
            | | |
            []|[]
            | | |
-    ______/_]_[_\______
+    ______/_]_[_\______\033[34;m
      C PrePreProcessor
-        Obfuscator""")
+        Obfuscator\033[;m""")
         self.files = []
 
         self.multifile = {
@@ -43,10 +43,10 @@ class Project():
         for func, ops in self.multifile["mangle"].items():
             if "name" in ops:
                 self.multifile["mangle_match"][func+"("] = "sub_"+"".join("{:02x}".format(t) for t in secrets.token_bytes(2))+"("
-            if "params" in ops:
+            #as the shuffle order is dependant on a full line its done in the classify itself
+            #if "params" in ops:
                 #TODO actually parse and generate a shuffle order
                 #this is also where a variadic functions should be added
-                print("func {}".format(func))
 
     #this will now chose what should be resolved in things such as the
     #asm labels to be chosen globally
@@ -57,8 +57,13 @@ class Project():
             file.resolve(self.multifile)
         if len(self.multifile["mangle"]) > 0:
             print("Functions mangled:")
-        for func,new in self.multifile["mangle_match"].items():
-            print("    [{} : {}]".format(func[:-1], new[:-1]))
+        for func,opts in self.multifile["mangle"].items():
+            print("    [{}".format(func), end="")
+            if "name" in opts:
+                print(" : {}".format(func, self.multifile["mangle_match"][func+"("][:-1]), end="")
+            if "params" in opts:
+                print(" : {}".format(self.multifile["mangle_params"][func]), end="")
+            print("]")
 
     #this actually writes the completed files
     def write(self):

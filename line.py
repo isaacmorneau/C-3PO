@@ -1,4 +1,4 @@
-import re, secrets, sys
+import re, secrets, sys, random
 
 
 #TODO replace regex with a lexer that isnt pattern based ()
@@ -217,6 +217,9 @@ class Line():
                     if "params" in lastfeed:
                         multifile["mangle"][func].append("params")
                         params = isolate_params(self.cleanline)
+                        multifile["mangle_params"][func] = [i for i,v in enumerate(params)]
+                        random.shuffle(multifile["mangle_params"][func])
+                        print(params)
                         #TODO build the reordered signature and record it in the global func mangling table
                     if "name" in lastfeed:
                         multifile["mangle"][func].append("name")
