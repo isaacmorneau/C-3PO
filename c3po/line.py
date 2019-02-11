@@ -24,16 +24,6 @@ asmlbljmp = """
         ".done{0}:"
         :::"%eax");"""# me, you, type
 
-def state_matcher(line):
-    parts = c3po_common_match.search(line)
-    name = parts.group(1)
-    tmp = parts.group(3)
-    options = []
-    if tmp:
-        options = [opt.strip() for opt in tmp.split(",")]
-    toggle = parts.group(4)
-    return name, options, toggle
-
 #turn foo(bar, baz) into ['bar', 'baz']
 def param_edit(line, reorder=None):
     args = [""]

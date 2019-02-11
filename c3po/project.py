@@ -1,4 +1,4 @@
-from file import File
+from .file import File
 import os, secrets
 
 class Project():
