@@ -141,13 +141,13 @@ class Line():
             functions = get_function_calls(self.cleanline)
             if len(functions) == 1:
                 func = functions[0]
-                args = get_function_arguments(func, self.cleanline)
                 if func not in multifile["mangle"]:
                     multifile["mangle"][func] = []
 
                 if "params" in lastfeed:
                     multifile["mangle"][func].append("params")
-                    params = param_edit(self.cleanline)
+                    args = get_function_arguments(func, self.cleanline)
+                    params = args
                     multifile["mangle_params"][func] = [i for i,v in enumerate(params)]
                     random.shuffle(multifile["mangle_params"][func])
                 if "name" in lastfeed:
@@ -162,7 +162,7 @@ class Line():
         #shuffle params first
         for key, value in multifile["mangle_params"].items():
             if key in self.line:
-                self.line = param_edit(self.line, value)
+                self.line = reorder_arguments(key, value, self.line)
         #break all the names
         for key, value in multifile["mangle_match"].items():
             if key in self.line:

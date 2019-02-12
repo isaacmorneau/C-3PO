@@ -168,6 +168,9 @@ def pragma_split(line):
     if len(line) == 0:
         return {}
 
+    if line.startswith("#pragma c3po"):
+        line = line[12:]
+
     directives = {}
     directive = ""
     option = ""
