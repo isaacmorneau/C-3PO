@@ -115,10 +115,11 @@ def reorder_arguments(name, order, line):
     args = [""]
     scope = 0
     args_end = False
-    start = ""
+
+    start = line[:line.index(name)]
     rebuilt = ""
     trailing = ""
-    for i,c in enumerate(line):
+    for i,c in enumerate(line[line.index(name):]):
         if args_end:
             #short circuit to collect remaining characters
             trailing += c
@@ -151,6 +152,8 @@ def reorder_arguments(name, order, line):
         else:
             #before the calls
             start += c
+    if name in trailing:
+        trailing = reorder_arguments(name, order, trailing)
 
     return start + rebuilt + trailing
 
@@ -188,6 +191,7 @@ class LexTest(unittest.TestCase):
     def test_get_full_listing(self):
         self.assertEquals(reorder_arguments("foo", [2, 1, 0], "foo(a, b, c);"), "foo(c, b, a);"),
         self.assertEquals(reorder_arguments("foo", [2, 1, 0], "foo(a, foo(1, 2, 3), c);"), "foo(c, foo(3, 2, 1), a);"),
+        self.assertEquals(reorder_arguments("foo", [2, 1, 0], "if (foo(1, 2, 3) && foo(3, 2, 1)) {"), "if (foo(3, 2, 1) && foo(1, 2, 3)) {"),
 
 
 
