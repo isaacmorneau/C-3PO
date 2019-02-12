@@ -37,8 +37,11 @@ add_executable(c3pod ${SOURCES_DEBUG})
 #also depends on gen for actual sources
 #this will consume all .c and .h files in src and after parsing will put them in c3po
 add_custom_target(gen_c3po ALL COMMAND python3 "${PROJECT_SOURCE_DIR}/c3po.py" "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/gen")
+#ensure code works before attempting generation
+add_dependencies(gen_c3po c3pod)
 #this ensures that they will be deleted on clean
-set_directory_properties(PROPERTY ADDITIONAL_MAKE_CLEAN_FILES "${PROJECT_SOURCE_DIR}/c3po")
+set_directory_properties(PROPERTY ADDITIONAL_MAKE_CLEAN_FILES "${PROJECT_SOURCE_DIR}/gen")
+#ensure generation works before attempting final compilation
 add_dependencies(c3po gen_c3po)
 
 #used to trigger the full strip after the fact
