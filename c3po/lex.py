@@ -88,7 +88,6 @@ def get_function_calls(line):
     token = False
     was_space = False
     current_token = ""
-
     functions = []
 
     for c in line:
