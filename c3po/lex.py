@@ -19,7 +19,7 @@ def is_function(line):
         if c in string.ascii_letters:
             current_token += c
             token = True
-        elif c == '(' and current_token not in "ifwhile":
+        elif c == '(' and current_token not in "ifwhilefor":
             return True
         else:
             current_token = ""
@@ -44,7 +44,7 @@ def has_function(name, line):
         if c in string.ascii_letters:
             current_token += c
             token = True
-        elif c == '(' and current_token not in "ifwhile":
+        elif c == '(' and current_token not in "ifwhilefor":
             if current_token == name:
                 return True
             else:
@@ -98,7 +98,7 @@ def get_function_calls(line):
         if c in string.ascii_letters:
             current_token += c
             token = True
-        elif c == '(' and current_token not in "ifwhile":
+        elif c == '(' and current_token not in "ifwhilefor":
             #function call
             functions.append(current_token)
             current_token = ""
@@ -162,15 +162,20 @@ class LexTest(unittest.TestCase):
         self.assertTrue(is_function("void foo();"))
         self.assertTrue(is_function("int a = (int)foo();"))
         self.assertTrue(is_function("if (foo(bar(baz))) {"))
+        self.assertTrue(is_function("void (*crazyfunc(int (a), int b, ...));"))
 
         self.assertFalse(is_function("//this is a comment"))
         self.assertFalse(is_function("int a = (int)foo;"))
         self.assertFalse(is_function("if (foo) {"))
+        self.assertFalse(is_function("while (foo) {"))
+        self.assertFalse(is_function("for (int i = 0;i < 10; ++i) {"))
+
 
     def test_has_function(self):
         self.assertTrue(has_function("foo", "void foo();"))
         self.assertTrue(has_function("foo", "int a = (int)foo();"))
         self.assertTrue(has_function("bar", "if (foo(bar(baz))) {"))
+        self.assertTrue(has_function("crazyfunc", "void (*crazyfunc(int (a), int b, ...));"))
 
         self.assertFalse(has_function("bar", "void foo();"))
         self.assertFalse(has_function("int", "int a = (int)foo();"))
@@ -182,6 +187,7 @@ class LexTest(unittest.TestCase):
         self.assertEquals(get_function_arguments("foo", "foo(bar + 4, (baz - 1)/2);"), ['bar + 4', '(baz - 1)/2'])
         self.assertEquals(get_function_arguments("bar", "if (foo(bar(baz))) {"), ["baz"])
         self.assertEquals(get_function_arguments("foo", "while (foo(bar(baz, baz))) {"), ['bar(baz, baz)'])
+        self.assertEquals(get_function_arguments("crazyfunc", "void (*crazyfunc(int (a), int b, ...));"), ["int (a)", "int b", "..."])
 
     def test_get_function_calls(self):
         self.assertEquals(get_function_calls("foo(bar(baz(1)))"), ["foo", "bar", "baz"])
