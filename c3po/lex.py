@@ -196,7 +196,3 @@ class LexTest(unittest.TestCase):
                                             reorder_arguments("bar", [1, 2, 0, 3],"foo(a, b, bar('t', 'e', 's', 't'));")),
                           "foo(bar('e', 's', 't', 't'), b, a);")
 
-
-
-if __name__ == "__main__":
-    unittest.main()
