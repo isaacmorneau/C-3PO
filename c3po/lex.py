@@ -144,7 +144,7 @@ def reorder_arguments(name, order, line):
                 #for variadic functions there will be more functions than in declaration
                 #pass them through as found
                 if len(order) < len(args):
-                    rebuilt += ", " + ", ".join(args[len(order):])
+                    rebuilt += ", " + ", ".join(arg.strip() for arg in args[len(order):])
                 args_end = True
                 trailing += ')'
                 continue
@@ -271,11 +271,12 @@ class LexTest(unittest.TestCase):
         self.assertEquals(get_function_calls("while (foo(bar(baz(1))) || foo(bar())) {"), ["foo", "bar", "baz", "foo", "bar"])
         self.assertEquals(get_function_calls("void say_hi(const char *msg) {"), ["say_hi"])
 
-    def test_get_full_listing(self):
+    def test_reorder_arguments(self):
         self.assertEquals(reorder_arguments("foo", [2, 1, 0], "foo(a, b, c);"), "foo(c, b, a);"),
         self.assertEquals(reorder_arguments("foo", [2, 1, 0], "foo(a, foo(1, 2, 3), c);"), "foo(c, foo(3, 2, 1), a);"),
         self.assertEquals(reorder_arguments("foo", [2, 1, 0], "if (foo(1, 2, 3) && foo(3, 2, 1)) {"), "if (foo(3, 2, 1) && foo(1, 2, 3)) {"),
         self.assertEquals(reorder_arguments("foo", [2, 1, 0],
                                             reorder_arguments("bar", [1, 2, 0, 3],"foo(a, b, bar('t', 'e', 's', 't'));")),
                           "foo(bar('e', 's', 't', 't'), b, a);")
+        self.assertEquals(reorder_arguments("foo", [2, 1, 0], "foo(1, 2, 3, 'a', 'b', 'c')"), "foo(3, 2, 1, 'a', 'b', 'c')")
 
