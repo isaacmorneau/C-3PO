@@ -72,12 +72,10 @@ def get_function_arguments(name, line):
             scope -= 1
             if scope == 0:
                 #last brace
-                return args
+                return [a.strip() for a in args]
         if c == ',' and scope == 1:
             args.append("")
-        elif scope == 1 and c != ' ':
-            args[-1] += c
-        elif scope > 1:
+        elif scope > 0:
             args[-1] += c
     raise Exception("Failed to extract params from '{}'".format(line))
 
@@ -109,6 +107,52 @@ def get_function_calls(line):
             token = False
     return functions
 
+#expects order to be a list of new argument positions
+def reorder_arguments(name, order, line):
+    if '(' not in line or name not in line:
+        return line
+
+    args = [""]
+    scope = 0
+    args_end = False
+    start = ""
+    rebuilt = ""
+    trailing = ""
+    for i,c in enumerate(line):
+        if args_end:
+            #short circuit to collect remaining characters
+            trailing += c
+            continue
+
+        if c == '(':
+            scope += 1
+            if scope == 1:
+                #actual start of the arguments
+                start += '('
+                continue
+        elif c == ')':
+            scope -= 1
+            if scope == 0:
+                #last brace
+                for j,arg in enumerate(args):
+                    if name in arg:
+                        args[j] = reorder_arguments(name, order, arg)
+                rebuilt = ", ".join(args[r].strip() for r in order)
+                args_end = True
+                trailing += ')'
+                continue
+
+        if c == ',' and scope == 1:
+            #new argument
+            args.append("")
+        elif scope > 0:
+            #the arguments themselves
+            args[-1] += c
+        else:
+            #before the calls
+            start += c
+
+    return start + rebuilt + trailing
 
 class LexTest(unittest.TestCase):
     def test_is_function(self):
@@ -132,13 +176,20 @@ class LexTest(unittest.TestCase):
 
     def test_get_params(self):
         self.assertEquals(get_function_arguments("foo", "foo(bar, baz);"), ['bar', 'baz'])
+        self.assertEquals(get_function_arguments("foo", "foo(bar + 4, (baz - 1)/2);"), ['bar + 4', '(baz - 1)/2'])
         self.assertEquals(get_function_arguments("bar", "if (foo(bar(baz))) {"), ["baz"])
         self.assertEquals(get_function_arguments("foo", "while (foo(bar(baz, baz))) {"), ['bar(baz, baz)'])
 
     def test_get_function_calls(self):
         self.assertEquals(get_function_calls("foo(bar(baz(1)))"), ["foo", "bar", "baz"])
         self.assertEquals(get_function_calls("foo(bar(baz(1)), bar(baz(1)))"), ["foo", "bar", "baz", "bar", "baz"])
-        self.assertEquals(get_function_calls("if (foo(bar(baz(1))) || foo(bar())) {"), ["foo", "bar", "baz", "foo", "bar"])
+        self.assertEquals(get_function_calls("while (foo(bar(baz(1))) || foo(bar())) {"), ["foo", "bar", "baz", "foo", "bar"])
+
+    def test_get_full_listing(self):
+        self.assertEquals(reorder_arguments("foo", [2, 1, 0], "foo(a, b, c);"), "foo(c, b, a);"),
+        self.assertEquals(reorder_arguments("foo", [2, 1, 0], "foo(a, foo(1, 2, 3), c);"), "foo(c, foo(3, 2, 1), a);"),
+
+
 
 if __name__ == "__main__":
     unittest.main()
