@@ -279,4 +279,5 @@ class LexTest(unittest.TestCase):
                                             reorder_arguments("bar", [1, 2, 0, 3],"foo(a, b, bar('t', 'e', 's', 't'));")),
                           "foo(bar('e', 's', 't', 't'), b, a);")
         self.assertEquals(reorder_arguments("foo", [2, 1, 0], "foo(1, 2, 3, 'a', 'b', 'c')"), "foo(3, 2, 1, 'a', 'b', 'c')")
+        self.assertEquals(reorder_arguments("foo", [2, 1, 0], "foo(1, 2, 3, 'a', 'b', 'c', foo(1, 2, 3, 'a', 'b', 'c'))"), "foo(3, 2, 1, 'a', 'b', 'c', foo(3, 2, 1, 'a', 'b', 'c'))")
 
