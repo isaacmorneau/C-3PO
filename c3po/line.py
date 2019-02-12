@@ -7,12 +7,6 @@ from .lex import *
 
 #TODO replace regex with a lexer that isnt pattern based ()
 cxor_string = re.compile('^[\s]*#define ([a-zA-Z0-9_]+) "(.*)"')
-#basically anything thats being called `asdf(` or `this_func (`
-function_name = re.compile('([a-zA-Z_][a-zA-Z0-9_]*)\s*\(.*')
-#i refuse to parse this
-unsupported_function = re.compile('\(\s*\*[a-zA-Z_][a-zA-Z0-9_]*\s*\(.*')
-#c3po_common_match = re.compile('^[\s]*#pragma[\s]+c3po[\s]+([a-z]+)(\((.+)\))?[\s]*(.*)')
-c3po_common_match = re.compile('^[\s]*#pragma[\s]+c3po(.*)$')
 
 #asmlbl = """
 #    __asm__(".shatter{0}:");
@@ -92,10 +86,9 @@ class Line():
     def classify(self, flags, multiline, multifile, lastfeed):
         feedforward = {}
         #do all pragama matches first
-        cmp = c3po_common_match.search(self.cleanline)
-        if cmp:
+        if is_c3po_pragma(self.cleanline):
             self.isflag = True
-            pragma = pragma_split(cmp.group(1))
+            pragma = pragma_split(self.cleanline)
             for directive, options in pragma.items():
                 if directive == "cxor":
                     cxor(options, flags)

@@ -159,6 +159,7 @@ def reorder_arguments(name, order, line):
     return start + rebuilt + trailing
 
 def is_c3po_pragma(line):
+    #TODO whitespace agnostic
     if "#pragma c3po" in line:
         return True
     return False
