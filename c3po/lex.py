@@ -59,7 +59,7 @@ def has_function(name, line):
 
 def get_function_arguments(name, line):
     if name not in line:
-        return None
+        return
 
     args = [""]
     scope = 0
@@ -83,7 +83,7 @@ def get_function_arguments(name, line):
 
 def get_function_calls(line):
     if '(' not in line:
-        return None
+        return
 
     token = False
     was_space = False
@@ -113,7 +113,7 @@ def get_function_calls(line):
 #expects order to be a list of new argument positions
 def reorder_arguments(name, order, line):
     if '(' not in line or name not in line:
-        return line
+        return
 
     args = [""]
     scope = 0
@@ -166,7 +166,7 @@ def reorder_arguments(name, order, line):
 
 def append_arguments(name, newargs, line):
     if '(' not in line or name not in line:
-        return line
+        return
 
     args = [""]
     scope = 0
