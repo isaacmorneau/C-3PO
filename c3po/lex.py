@@ -81,6 +81,36 @@ def get_function_arguments(name, line):
             args[-1] += c
     raise Exception("Failed to extract params from '{}'".format(line))
 
+def get_function_calls(line):
+    if '(' not in line:
+        return None
+
+    token = False
+    was_space = False
+    current_token = ""
+
+    functions = []
+
+    for c in line:
+        if c == ' ':
+            was_space = True
+            continue
+        if was_space:
+            current_token = ""
+            was_space = False
+        if c in string.ascii_letters:
+            current_token += c
+            token = True
+        elif c == '(' and current_token not in "ifwhile":
+            #function call
+            functions.append(current_token)
+            current_token = ""
+        else:
+            current_token = ""
+            token = False
+    return functions
+
+
 class LexTest(unittest.TestCase):
     def test_is_function(self):
         self.assertTrue(is_function("void foo();"))
@@ -105,6 +135,11 @@ class LexTest(unittest.TestCase):
         self.assertEquals(get_function_arguments("foo", "foo(bar, baz);"), ['bar', 'baz'])
         self.assertEquals(get_function_arguments("bar", "if (foo(bar(baz))) {"), ["baz"])
         self.assertEquals(get_function_arguments("foo", "while (foo(bar(baz, baz))) {"), ['bar(baz, baz)'])
+
+    def test_get_function_calls(self):
+        self.assertEquals(get_function_calls("foo(bar(baz(1)))"), ["foo", "bar", "baz"])
+        self.assertEquals(get_function_calls("foo(bar(baz(1)), bar(baz(1)))"), ["foo", "bar", "baz", "bar", "baz"])
+        self.assertEquals(get_function_calls("if (foo(bar(baz(1))) || foo(bar())) {"), ["foo", "bar", "baz", "foo", "bar"])
 
 if __name__ == "__main__":
     unittest.main()
