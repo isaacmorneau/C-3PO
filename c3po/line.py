@@ -143,13 +143,9 @@ class Line():
                     #this extra check is to make sure variadic functions still work
                     params = [i for i in range(len(args))]
                     if args[-1] == "...":
+                        #dont mess with variadic functions last 2
                         params = params[:-2]
-                        if params:
-                            #you need the last two params in place to use va_start
-                            #TODO auto regenerate the va_start
-                            random.shuffle(params)
-                            params.append(len(params))
-                            params.append(len(params))
+                    random.shuffle(params)
                     multifile["mangle_params"][func] = params
                 if "name" in lastfeed:
                     #build the new name record it in the global func mangling table

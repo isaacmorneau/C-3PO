@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdio.h>
+#include <stdarg.h>
 
 #include "c3po.h"
 #include "test.h"
@@ -22,11 +23,10 @@ void say_hi(const char *msg) {
 
 
 #pragma c3po mangle(params, name)
-int scoper(int s, int v, char a)
+int scoper(int s, int v, ...)
 {
     //so much
     (void)v;/* garbage */
-    s += a;
     return s;
 }
 
@@ -40,7 +40,7 @@ void (*crazyfunc(int (a), int b, ...));
 int main(void) {
     c3po_zero_elf();
 
-    scoper(scoper(1, scoper(2, 3, 'c'), 'b' ), 4, 'a');
+    scoper(scoper(1, scoper(2, 3, 'c'), 'b', 'c', 'd'), 4, 'a', "hahaha");
 
 #pragma c3po shatter(call, high, on)
     int i = 0;

@@ -141,6 +141,10 @@ def reorder_arguments(name, order, line):
                     if name in arg:
                         args[j] = reorder_arguments(name, order, arg)
                 rebuilt = ", ".join(args[r].strip() for r in order)
+                #for variadic functions there will be more functions than in declaration
+                #pass them through as found
+                if len(order) < len(args):
+                    rebuilt += ", " + ", ".join(args[len(order):])
                 args_end = True
                 trailing += ')'
                 continue
