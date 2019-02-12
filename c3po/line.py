@@ -1,4 +1,8 @@
-import re, secrets, sys, random
+import re
+import secrets
+import sys
+import random
+from .lex import *
 
 
 #TODO replace regex with a lexer that isnt pattern based ()
@@ -23,79 +27,6 @@ asmlbljmp = """
         "{2} .shatter{1};"
         ".done{0}:"
         :::"%eax");"""# me, you, type
-
-#turn foo(bar, baz) into ['bar', 'baz']
-def param_edit(line, reorder=None):
-    args = [""]
-    preparams = True
-    scope = 0
-    passthrough = None
-    trailing = ""
-    for c in reversed(line):
-        if passthrough:
-            passthrough = c + passthrough
-            continue
-        if c == ')':
-            scope += 1
-            if scope == 1:
-                trailing += ')'
-                continue
-        elif c == '(':
-            scope -= 1
-            if scope == 0:
-                if reorder == None:
-                    #just extract the args
-                    return [arg.strip() for arg in reversed(args)]
-                else:
-                    #collapse reorder the params
-                    newarray = []
-                    for r in reorder:
-                        newarray.append(args[len(args) - 1 - r].strip())
-                    passthrough = '(' + ", ".join(newarray) + ''.join(c for c in reversed(trailing))
-        if c == ',' and scope == 1:
-            args.append("")
-        elif scope > 0:
-            args[-1] = c + args[-1]
-        else:
-            trailing += c
-
-    if passthrough:
-        return passthrough
-    else:
-        print("Failed to parse function '{}', is this valid c?".format(line), file=sys.stderr)
-
-#turn directive1(opt1, opt2) directive2(opt1) into {"directive1":["opt1", "opt2"], "directive2":["opt1"]}
-def pragma_split(line):
-    directives = {}
-    directive = ""
-    option = ""
-    scope = 0
-    for c in line.strip():
-        if c == ' ':
-            if scope == 1:
-                continue
-            else:
-                #no options for single flags
-                directives[directive] = []
-
-        if c == '(':
-            scope += 1
-            directives[directive] = [""]
-            continue
-        elif c == ')':
-            scope -= 1
-            directive = ""
-            continue
-
-        if scope == 0:
-            directive += c
-        elif scope == 1:
-            if c == ',':
-                directives[directive].append("")
-            else:
-                directives[directive][-1] += c
-    return directives
-
 
 #functions to parse each directive
 def cxor(options, flags):
@@ -203,34 +134,25 @@ class Line():
         if self.flags["cxor"] and cxor_string.match(self.cleanline):
             self.flags["cxor_mark"] = True
 
-        #track every thing that gets called
-        parts = function_name.search(self.cleanline)
-        if parts and not unsupported_function.search(self.cleanline):
-            func = parts.group(1)
-            if func not in ["if", "while", "for"]:
-                #this is a function mark it for resolution pass
-                self.flags["func_mark"] = True
-
         #last feed checks are for next line affecting pragmas
         if "mangle" in lastfeed:
             self.flags["mangle"] = []
             #ensure the function is parsable
-            parts = function_name.search(self.cleanline)
-            if parts and not unsupported_function.search(self.cleanline):
-                func = parts.group(1)
-                if func not in ["if", "while", "for"]:
-                    #log what operations to apply to fuinctions globally
-                    if func not in multifile["mangle"]:
-                        multifile["mangle"][func] = []
+            functions = get_function_calls(self.cleanline)
+            if len(functions) == 1:
+                func = functions[0]
+                args = get_function_arguments(func, self.cleanline)
+                if func not in multifile["mangle"]:
+                    multifile["mangle"][func] = []
 
-                    if "params" in lastfeed:
-                        multifile["mangle"][func].append("params")
-                        params = param_edit(self.cleanline)
-                        multifile["mangle_params"][func] = [i for i,v in enumerate(params)]
-                        random.shuffle(multifile["mangle_params"][func])
-                    if "name" in lastfeed:
-                        multifile["mangle"][func].append("name")
-                        #TODO build the new name record it in the global func mangling table
+                if "params" in lastfeed:
+                    multifile["mangle"][func].append("params")
+                    params = param_edit(self.cleanline)
+                    multifile["mangle_params"][func] = [i for i,v in enumerate(params)]
+                    random.shuffle(multifile["mangle_params"][func])
+                if "name" in lastfeed:
+                    #build the new name record it in the global func mangling table
+                    multifile["mangle"][func].append("name")
             else:
                 print("Unable to apply mangling to signature: '{}'".format(self.line), file=sys.stderr)
                 print("Consider typedef for complex types", file=sys.stderr)

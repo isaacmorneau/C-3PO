@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-import string, unittest
+import string
+import unittest
 
 def is_function(line):
     if '(' not in line:
@@ -157,7 +158,74 @@ def reorder_arguments(name, order, line):
 
     return start + rebuilt + trailing
 
+def is_c3po_pragma(line):
+    if "#pragma c3po" in line:
+        return True
+    return False
+
+#turn directive1(opt1, opt2) directive2(opt1) into {"directive1":["opt1", "opt2"], "directive2":["opt1"]}
+def pragma_split(line):
+    if len(line) == 0:
+        return {}
+
+    directives = {}
+    directive = ""
+    option = ""
+    scope = 0
+    for c in line.strip():
+        if c == ' ':
+            if scope == 0:
+                #directive broken
+                if directive and directive not in directives:
+                    directives[directive] = []
+                    directive = ""
+            else:
+                #whitespace between options
+                continue
+            continue
+        elif c == '(':
+            scope += 1
+            if directive and directive not in directives:
+                directives[directive] = []
+            elif not directive:
+                raise Exception("Malformed pragma line '{}'".format(line))
+            continue
+        elif c == ')':
+            scope -= 1
+            if option:
+                directives[directive].append(option)
+                option = ""
+            directive = ""
+            continue
+
+        if scope == 0:
+            directive += c
+        elif scope == 1:
+            if c == ',' and option:
+                directives[directive].append(option)
+                option = ""
+            else:
+                option += c
+
+    if directive and directive not in directives:
+        directives[directive] = []
+    if not directives:
+        raise Exception("Pragma line has no directives")
+    return directives
+
 class LexTest(unittest.TestCase):
+    def test_pragma_split(self):
+        self.assertEquals(pragma_split("test(option, option)"), {"test":["option", "option"]})
+        self.assertEquals(pragma_split("test"), {"test":[]})
+        self.assertEquals(pragma_split("dir1 dir2(option)"), {"dir1":[], "dir2":["option"]})
+        self.assertEquals(pragma_split("dir(opt1) dir(opt2)"), {"dir":["opt1", "opt2"]})
+
+        with self.assertRaises(Exception) as ae:
+            pragma_split("(opt1) what(())")
+
+        with self.assertRaises(Exception) as ae:
+            pragma_split("       ")
+
     def test_is_function(self):
         self.assertTrue(is_function("void foo();"))
         self.assertTrue(is_function("int a = (int)foo();"))
@@ -169,7 +237,6 @@ class LexTest(unittest.TestCase):
         self.assertFalse(is_function("if (foo) {"))
         self.assertFalse(is_function("while (foo) {"))
         self.assertFalse(is_function("for (int i = 0;i < 10; ++i) {"))
-
 
     def test_has_function(self):
         self.assertTrue(has_function("foo", "void foo();"))
