@@ -347,4 +347,7 @@ class LexTest(unittest.TestCase):
 
     def test_append_arguments(self):
         self.assertEquals(append_arguments("foo", ["1", "2", "3"], "foo('t', 's', 't')"), "foo('t', 's', 't', 1, 2, 3)")
+        self.assertEquals(make_variadic("foo('t', 's', 't')"), "foo('t', 's', 't', ...)")
+        self.assertEquals(make_variadic("foo('t', 's', 't')", "foo"), "foo('t', 's', 't', ...)")
+        self.assertEquals(make_variadic("foo('t', 's', 't')", "foo", ['t', 's', 't']), "foo('t', 's', 't', ...)")
 
