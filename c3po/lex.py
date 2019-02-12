@@ -2,6 +2,7 @@
 import string
 import unittest
 
+#main methods for line decomposition
 def is_function(line):
     if '(' not in line:
         return False
@@ -163,6 +164,52 @@ def reorder_arguments(name, order, line):
 
     return start + rebuilt + trailing
 
+def append_arguments(name, newargs, line):
+    if '(' not in line or name not in line:
+        return line
+
+    args = [""]
+    scope = 0
+    args_end = False
+
+    start = line[:line.index(name)]
+    rebuilt = ""
+    trailing = ""
+    for i,c in enumerate(line[line.index(name):]):
+        if args_end:
+            #short circuit to collect remaining characters
+            trailing += c
+            continue
+
+        if c == '(':
+            scope += 1
+            if scope == 1:
+                #actual start of the arguments
+                start += '('
+                continue
+        elif c == ')':
+            scope -= 1
+            if scope == 0:
+                #last brace
+                rebuilt = ", ".join(arg.strip() for arg in args+newargs)
+                args_end = True
+                trailing += ')'
+                continue
+
+        if c == ',' and scope == 1:
+            #new argument
+            args.append("")
+        elif scope > 0:
+            #the arguments themselves
+            args[-1] += c
+        else:
+            #before the calls
+            start += c
+    if name in trailing:
+        trailing = append_arguments(name, newargs, trailing)
+
+    return start + rebuilt + trailing
+
 def is_c3po_pragma(line):
     #TODO whitespace agnostic
     if "#pragma c3po" in line:
@@ -222,6 +269,23 @@ def pragma_split(line):
         raise Exception("Pragma line has no directives")
     return directives
 
+
+#helpers for ease of use
+#if args is blank it will find them itself
+def is_declaration(line, args=None):
+    return line[-1] in ['{',';'] and (len(args) == 1 or len(get_function_calls(line)) == 1)
+
+def is_variadic(args):
+    return args and args[-1] == "..."
+
+def make_variadic(line, name=None, args=None):
+    if args and is_variadic(args):
+        #it already is...
+        return line
+    if not name:
+        name = get_function_calls(line)[0]
+    return append_arguments(name, ["..."], line)
+
 class LexTest(unittest.TestCase):
     def test_pragma_split(self):
         self.assertEquals(pragma_split("test(option, option)"), {"test":["option", "option"]})
@@ -258,7 +322,7 @@ class LexTest(unittest.TestCase):
         self.assertFalse(has_function("baz", "if (foo(bar(baz))) {"))
         self.assertFalse(has_function("the godfather", "if (foo(bar(baz))) {"))
 
-    def test_get_params(self):
+    def test_get_function_arguments(self):
         self.assertEquals(get_function_arguments("foo", "foo(bar, baz);"), ['bar', 'baz'])
         self.assertEquals(get_function_arguments("foo", "foo(bar + 4, (baz - 1)/2);"), ['bar + 4', '(baz - 1)/2'])
         self.assertEquals(get_function_arguments("bar", "if (foo(bar(baz))) {"), ["baz"])
@@ -280,4 +344,7 @@ class LexTest(unittest.TestCase):
                           "foo(bar('e', 's', 't', 't'), b, a);")
         self.assertEquals(reorder_arguments("foo", [2, 1, 0], "foo(1, 2, 3, 'a', 'b', 'c')"), "foo(3, 2, 1, 'a', 'b', 'c')")
         self.assertEquals(reorder_arguments("foo", [2, 1, 0], "foo(1, 2, 3, 'a', 'b', 'c', foo(1, 2, 3, 'a', 'b', 'c'))"), "foo(3, 2, 1, 'a', 'b', 'c', foo(3, 2, 1, 'a', 'b', 'c'))")
+
+    def test_append_arguments(self):
+        self.assertEquals(append_arguments("foo", ["1", "2", "3"], "foo('t', 's', 't')"), "foo('t', 's', 't', 1, 2, 3)")
 
