@@ -96,7 +96,8 @@ def get_function_calls(line):
         if was_space:
             current_token = ""
             was_space = False
-        if c in string.ascii_letters:
+
+        if c in string.ascii_letters or c in "_1234567890":
             current_token += c
             token = True
         elif c == '(' and current_token not in "ifwhilefor":
@@ -264,6 +265,7 @@ class LexTest(unittest.TestCase):
         self.assertEquals(get_function_calls("foo(bar(baz(1)))"), ["foo", "bar", "baz"])
         self.assertEquals(get_function_calls("foo(bar(baz(1)), bar(baz(1)))"), ["foo", "bar", "baz", "bar", "baz"])
         self.assertEquals(get_function_calls("while (foo(bar(baz(1))) || foo(bar())) {"), ["foo", "bar", "baz", "foo", "bar"])
+        self.assertEquals(get_function_calls("void say_hi(const char *msg) {"), ["say_hi"])
 
     def test_get_full_listing(self):
         self.assertEquals(reorder_arguments("foo", [2, 1, 0], "foo(a, b, c);"), "foo(c, b, a);"),

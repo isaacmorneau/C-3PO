@@ -148,7 +148,6 @@ class Line():
                     multifile["mangle"][func].append("name")
             else:
                 print("Unable to apply mangling to signature: '{}'".format(self.line), file=sys.stderr)
-                print("Consider typedef for complex types", file=sys.stderr)
 
 
     def resolve(self, multiline, multifile, shatterself, shatterother):
