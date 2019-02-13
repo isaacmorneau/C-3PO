@@ -14,6 +14,9 @@ const struct magic ** supercall(int j) {
     return NULL;
 }
 
+//this should also be edited but not passed params
+void say_hi(const char *msg);
+
 #pragma c3po mangle(variadic)
 void say_hi(const char *msg) {
     volatile int a = 0;

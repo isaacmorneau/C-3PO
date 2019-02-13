@@ -197,8 +197,31 @@ class Line():
                 self.line = reorder_arguments(key, value, self.line)
         for func in multifile["mangle_variadic"]:
             if func in self.cleanline:
-                if is_defdec(self.line):
+                arguments = get_function_arguments(func, self.cleanline)
+
+                if len(arguments) == 0:
+                    #you need at least one named param so ensure there is one
+                    if is_defdec(self.cleanline):
+                        self.line = append_arguments(func, ["int base"], self.line)
+                        self.cleanline = append_arguments(func, ["int base"], self.cleanline)
+                        arguments.append("int base")
+                    else:
+                        self.line = append_arguments(func, ["0"], self.line)
+                        self.cleanline = append_arguments(func, ["0"], self.cleanline)
+                        arguments.append("0")
+
+                if is_defdec(self.cleanline, [";"]):
                     self.line = append_arguments(func, ["..."], self.line)
+                elif is_defdec(self.cleanline,["{"]):
+                    self.line = append_arguments(func, ["..."], self.line)
+                    #quick break to select the name
+                    argument_names = get_token_names(arguments)
+                    finalnamed = argument_names[-1].split()[-1]
+                    self.line += """
+    va_list va;
+    va_start(va, {});
+    va_end(va);
+""".format(finalnamed)
                 else:
                     #TODO allow randomization to be configurable
                     additional_args = [str(secrets.randbelow(65534)) for i in range(secrets.randbelow(10) + 1)]

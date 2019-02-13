@@ -299,7 +299,14 @@ def is_defdec(line, defdec = ['{', ';']):
     #unless theres a return type its not a declaration
     return len(tokens) > 1
 
-#helpers for ease of use
+def get_token_names(args):
+    parsed_args = []
+    for arg in args:
+        newnames = ''.join(c for c in arg.split()[-1] if c in string.ascii_letters or c in "_1234567890")
+        if newnames:
+            parsed_args.append(newnames)
+    return parsed_args
+
 def is_variadic(args):
     return args and args[-1] == "..."
 
