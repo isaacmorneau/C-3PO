@@ -14,7 +14,7 @@ const struct magic ** supercall(int j) {
     return NULL;
 }
 
-#pragma c3po mangle(shuffle, name, variadic)
+#pragma c3po mangle(variadic)
 void say_hi(const char *msg) {
     volatile int a = 0;
     printf("%s\n", msg);

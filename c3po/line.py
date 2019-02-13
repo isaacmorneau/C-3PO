@@ -172,8 +172,24 @@ class Line():
                 if "name" in lastfeed:
                     #build the new name record it in the global func mangling table
                     multifile["mangle"][func].append("name")
+                if "variadic" in lastfeed:
+                    args = get_function_arguments(func, self.cleanline)
+                    if is_variadic(args):
+                        print("Function already variadic, unable to apply mangling to signature: '{}'".format(self.cleanline), file=sys.stderr)
+                    elif is_defdec(self.cleanline):
+                        #only operate on the actual definitons not random calls
+                        self.line = make_variadic(self.line, func, args)
+                        #track that this line is not to be replaced its the definition for the replacement
+                        self.flags["variadic_def"] = True
+                        if func not in multifile["mangle_variadic"]:
+                            multifile["mangle_variadic"].append(func)
+                        #TODO append the va start and end to the line make sure its not optimized out
+                        #additioinal checks for if this is a definition or a declaration are required
+                    else:
+                        print("Can only apply mangling to function definitions and declarations: '{}'".format(self.cleanline), file=sys.stderr)
+
             else:
-                print("Unable to apply mangling to signature: '{}'".format(self.line), file=sys.stderr)
+                print("Unable to apply mangling to signature: '{}'".format(self.cleanline), file=sys.stderr)
 
 
     def resolve(self, multiline, multifile, shatterself, shatterother):
