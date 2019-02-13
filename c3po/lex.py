@@ -278,7 +278,7 @@ def pragma_split(line):
 
 
 def is_definiton(line):
-    if line[-1] not in ['{',';'] or any(operator in line for operator in functionless_operators):
+    if line[-1] not in ['{',';'] or line[0] == '(' or any(operator in line for operator in functionless_operators):
         return False
 
     tokens = []
@@ -374,6 +374,7 @@ class LexTest(unittest.TestCase):
         self.assertEquals(make_variadic("foo('t', 's', 't')"), "foo('t', 's', 't', ...)")
         self.assertEquals(make_variadic("foo('t', 's', 't')", "foo"), "foo('t', 's', 't', ...)")
         self.assertEquals(make_variadic("foo('t', 's', 't')", "foo", ['t', 's', 't']), "foo('t', 's', 't', ...)")
+
     def test_is_declaration(self):
         self.assertTrue(is_definiton("void foo(void);"))
         self.assertTrue(is_definiton("void foo(void) {"))
@@ -383,5 +384,6 @@ class LexTest(unittest.TestCase):
         self.assertFalse(is_definiton("foo();"))
         self.assertFalse(is_definiton("if (foo()) {"))
         self.assertFalse(is_definiton("int b = bar();"))
+        self.assertFalse(is_definiton("(void)(crazyfunc(a, b, c));"))
 
 
