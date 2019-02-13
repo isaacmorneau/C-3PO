@@ -14,7 +14,7 @@ const struct magic ** supercall(int j) {
     return NULL;
 }
 
-#pragma c3po mangle(params, name)
+#pragma c3po mangle(shuffle, name, variadic)
 void say_hi(const char *msg) {
     volatile int a = 0;
     printf("%s\n", msg);
@@ -22,7 +22,7 @@ void say_hi(const char *msg) {
 }
 
 
-#pragma c3po mangle(params, name)
+#pragma c3po mangle(shuffle, name)
 int scoper(int s, int v, ...)
 {
     //so much
@@ -30,11 +30,11 @@ int scoper(int s, int v, ...)
     return s;
 }
 
-#pragma c3po mangle(params)
+#pragma c3po mangle(shuffle)
 void thing(int a, int *b, char c, char *d, double e, double *f);
 
 //TODO currently unsupported
-#pragma c3po mangle(params)
+#pragma c3po mangle(shuffle)
 void (*crazyfunc(int (a), int b, ...));
 
 int main(void) {

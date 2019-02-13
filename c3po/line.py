@@ -34,6 +34,8 @@ def cxor(options, flags):
                 flags["cxor_minlength"] = int(opt)
             except ValueError as ex:
                 print("Failed to parse padding optionue for cxor '{}' number was expected".format(opt), file=sys.stderr)
+    if len(options) == 0:
+        print("Cxor not turned on or off, unused directive", file=sys.stderr)
 
 def shatter(options, flags):
     for opt in options:
@@ -53,23 +55,37 @@ def shatter(options, flags):
             flags["shatter_level"] = 1
         else:
             print("Unrecognized option for shatter: '{}'".format(opt), file=sys.stderr)
+    if len(options) == 0:
+        print("Shatter  not turned on or off, unused directive", file=sys.stderr)
 
 def shuffle(options, flags, index, multiline):
-    if "on" in options:
-        flags["shuffle"] = True
-        multiline["shuffle"].append([index, index, [[]]])
-    elif "off" in options:
-        flags["shuffle"] = False
-        multiline["shuffle"][-1][1] = index
-    else:
+    for opt in options:
+        if "on" in options:
+            flags["shuffle"] = True
+            multiline["shuffle"].append([index, index, [[]]])
+        elif "off" in options:
+            flags["shuffle"] = False
+            multiline["shuffle"][-1][1] = index
+        else:
+            print("Unrecognized option for shuffle: '{}'".format(opt), file=sys.stderr)
+    if len(options) == 0:
         print("Shuffle not turned on or off, unused directive", file=sys.stderr)
+
 
 def mangle(options, feedforward):
     feedforward["mangle"] = True
-    if "params" in options:
-        feedforward["params"] = True
-    if "name" in options:
-        feedforward["name"] = True
+    for opt in options:
+        if "shuffle" in options:
+            feedforward["shuffle"] = True
+        elif "name" in options:
+            feedforward["name"] = True
+        elif "variadic" in options:
+            feedforward["variadic"] = True
+        else:
+            print("Unrecognized option for mangle: '{}'".format(opt), file=sys.stderr)
+    if len(options) == 0:
+        #TODO decide what the default behavior for mangle
+        pass
 
 class Line():
     def __init__(self, index, rawline):
@@ -137,7 +153,7 @@ class Line():
                 if func not in multifile["mangle"]:
                     multifile["mangle"][func] = []
 
-                if "params" in lastfeed:
+                if "shuffle" in lastfeed:
                     args = get_function_arguments(func, self.cleanline)
                     #this extra check is to make sure variadic functions still work
                     params = [i for i in range(len(args))]
@@ -148,11 +164,11 @@ class Line():
                             params = params[:-2]
                             random.shuffle(params)
                             multifile["mangle_params"][func] = params
-                            multifile["mangle"][func].append("params")
+                            multifile["mangle"][func].append("shuffle")
                     else:
                         random.shuffle(params)
                         multifile["mangle_params"][func] = params
-                        multifile["mangle"][func].append("params")
+                        multifile["mangle"][func].append("shuffle")
                 if "name" in lastfeed:
                     #build the new name record it in the global func mangling table
                     multifile["mangle"][func].append("name")

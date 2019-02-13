@@ -75,7 +75,7 @@ class Project():
             print("    [{}".format(func), end="")
             if "name" in opts:
                 print(" : {}".format(self.multifile["mangle_match"][func+"("][:-1]), end="")
-            if "params" in opts:
+            if "shuffle" in opts:
                 print(" : {}".format(self.multifile["mangle_params"][func]), end="")
             print("]")
 
