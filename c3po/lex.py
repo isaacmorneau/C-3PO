@@ -414,3 +414,10 @@ class LexTest(unittest.TestCase):
         self.assertFalse(is_defdec("if (foo()) {", [";"]))
         self.assertFalse(is_defdec("int b = bar();", [";"]))
         self.assertFalse(is_defdec("(void)(crazyfunc(a, b, c));", [";"]))
+
+    def test_get_token_names(self):
+        self.assertEquals(get_token_names(["int a"]), ["a"])
+        self.assertEquals(get_token_names(["int *a"]), ["a"])
+        self.assertEquals(get_token_names(["int (*a)"]), ["a"])
+        self.assertEquals(get_token_names(["(*a)"]), ["a"])
+        self.assertEquals(get_token_names(["(void *)a"]), ["a"])

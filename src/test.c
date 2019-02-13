@@ -5,6 +5,7 @@
 #include "c3po.h"
 #include "test.h"
 
+#pragma c3po mangle(variadic)
 const struct magic ** supercall(int j) {
     volatile int a = 0x4823;
     a *= 4;
