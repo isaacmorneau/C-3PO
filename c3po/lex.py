@@ -2,6 +2,13 @@
 import string
 import unittest
 
+#sigh
+operators = ["++", "--", "+", "-", "*", "/", "!", "~", "^", "&", "|", "%", "<<", ">>", "=","+=", "-=", "*=", "/=", "~=", "^=", "&=", "|=", "%=", "<<=", ">>=", "&&", "||", "!=", "==", "?", ":"]
+#* can be in declarations
+functionless_operators = ["++", "--", "+", "-", "/", "!", "~", "^", "&", "|", "%", "<<", ">>", "=","+=", "-=", "*=", "/=", "~=", "^=", "&=", "|=", "%=", "<<=", ">>=", "&&", "||", "!=", "==", "?", ":"]
+
+conditionals = ["if", "while", "for"]
+
 #main methods for line decomposition
 def is_function(line):
     if '(' not in line:
@@ -21,7 +28,7 @@ def is_function(line):
         if c in string.ascii_letters:
             current_token += c
             token = True
-        elif c == '(' and current_token not in "ifwhilefor":
+        elif c == '(' and current_token and current_token not in conditionals:
             return True
         else:
             current_token = ""
@@ -46,7 +53,7 @@ def has_function(name, line):
         if c in string.ascii_letters:
             current_token += c
             token = True
-        elif c == '(' and current_token not in "ifwhilefor":
+        elif c == '(' and current_token not in conditionals:
             if current_token == name:
                 return True
             else:
@@ -101,7 +108,7 @@ def get_function_calls(line):
         if c in string.ascii_letters or c in "_1234567890":
             current_token += c
             token = True
-        elif c == '(' and current_token not in "ifwhilefor":
+        elif c == '(' and current_token and current_token not in conditionals:
             #function call
             functions.append(current_token)
             current_token = ""
@@ -270,11 +277,28 @@ def pragma_split(line):
     return directives
 
 
-#helpers for ease of use
-#if args is blank it will find them itself
-def is_declaration(line, args=None):
-    return line[-1] in ['{',';'] and (len(args) == 1 or len(get_function_calls(line)) == 1)
+def is_definiton(line):
+    if line[-1] not in ['{',';'] or any(operator in line for operator in functionless_operators):
+        return False
 
+    tokens = []
+    current_token = ""
+    for c in line:
+        if c == '(':
+            if current_token and current_token not in conditionals:
+                tokens.append(current_token)
+            current_token = ""
+        elif c == " ":
+            if current_token and current_token not in conditionals:
+                tokens.append(current_token)
+            current_token = ""
+        elif c != ")":
+            #dont add close brace to token lists otherwise )) would count as one
+            current_token += c
+    #unless theres a return type its not a declaration
+    return len(tokens) > 1
+
+#helpers for ease of use
 def is_variadic(args):
     return args and args[-1] == "..."
 
@@ -350,4 +374,14 @@ class LexTest(unittest.TestCase):
         self.assertEquals(make_variadic("foo('t', 's', 't')"), "foo('t', 's', 't', ...)")
         self.assertEquals(make_variadic("foo('t', 's', 't')", "foo"), "foo('t', 's', 't', ...)")
         self.assertEquals(make_variadic("foo('t', 's', 't')", "foo", ['t', 's', 't']), "foo('t', 's', 't', ...)")
+    def test_is_declaration(self):
+        self.assertTrue(is_definiton("void foo(void);"))
+        self.assertTrue(is_definiton("void foo(void) {"))
+        self.assertTrue(is_definiton("void (*crazyfunc(int (a), int b, ...));"))
+        self.assertTrue(is_definiton("void (*crazyfunc(int (a), int b, ...)){"))
+
+        self.assertFalse(is_definiton("foo();"))
+        self.assertFalse(is_definiton("if (foo()) {"))
+        self.assertFalse(is_definiton("int b = bar();"))
+
 
