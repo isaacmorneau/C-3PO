@@ -367,17 +367,22 @@ class LexTest(unittest.TestCase):
         self.assertEquals(append_arguments("foo", ["..."], "foo('t', 's', 't')"), "foo('t', 's', 't', ...)")
 
     def test_is_defdec(self):
+        self.assertTrue(is_defdec("void foo();"))
         self.assertTrue(is_defdec("void foo(void);"))
+        self.assertTrue(is_defdec("void foo() {"))
         self.assertTrue(is_defdec("void foo(void) {"))
         self.assertTrue(is_defdec("void (*crazyfunc(int (a), int b, ...));"))
         self.assertTrue(is_defdec("void (*crazyfunc(int (a), int b, ...)){"))
 
         self.assertFalse(is_defdec("foo();"))
+        self.assertFalse(is_defdec("foo(test);"))
         self.assertFalse(is_defdec("if (foo()) {"))
+        self.assertFalse(is_defdec("if (foo(test)) {"))
         self.assertFalse(is_defdec("int b = bar();"))
         self.assertFalse(is_defdec("(void)(crazyfunc(a, b, c));"))
 
     def test_is_definition(self):
+        self.assertTrue(is_defdec("void foo() {", ["{"]))
         self.assertTrue(is_defdec("void foo(void) {", ["{"]))
         self.assertTrue(is_defdec("void (*crazyfunc(int (a), int b, ...)){", ["{"]))
 
@@ -385,11 +390,12 @@ class LexTest(unittest.TestCase):
         self.assertFalse(is_defdec("void (*crazyfunc(int (a), int b, ...));", ["{"]))
 
         self.assertFalse(is_defdec("foo();",["{"]))
+        self.assertFalse(is_defdec("foo(test);",["{"]))
         self.assertFalse(is_defdec("if (foo()) {", ["{"]))
         self.assertFalse(is_defdec("int b = bar();", ["{"]))
         self.assertFalse(is_defdec("(void)(crazyfunc(a, b, c));", ["{"]))
 
-    def test_is_definition(self):
+    def test_is_declaration(self):
         self.assertTrue(is_defdec("void foo(void);", [";"]))
         self.assertTrue(is_defdec("void (*crazyfunc(int (a), int b, ...));", [";"]))
 
@@ -397,6 +403,7 @@ class LexTest(unittest.TestCase):
         self.assertFalse(is_defdec("void (*crazyfunc(int (a), int b, ...)){", [";"]))
 
         self.assertFalse(is_defdec("foo();",[";"]))
+        self.assertFalse(is_defdec("foo(test);",[";"]))
         self.assertFalse(is_defdec("if (foo()) {", [";"]))
         self.assertFalse(is_defdec("int b = bar();", [";"]))
         self.assertFalse(is_defdec("(void)(crazyfunc(a, b, c));", [";"]))
