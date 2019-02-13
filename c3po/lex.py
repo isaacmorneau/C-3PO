@@ -288,7 +288,7 @@ def is_defdec(line, defdec = ['{', ';']):
         if c == '(':
             if current_token and current_token not in conditionals:
                 tokens.append(current_token)
-            current_token = ""
+                break
         elif c == " ":
             if current_token and current_token not in conditionals:
                 tokens.append(current_token)
@@ -302,14 +302,6 @@ def is_defdec(line, defdec = ['{', ';']):
 #helpers for ease of use
 def is_variadic(args):
     return args and args[-1] == "..."
-
-def make_variadic(line, name=None, args=None):
-    if args and is_variadic(args):
-        #it already is...
-        return line
-    if not name:
-        name = get_function_calls(line)[0]
-    return append_arguments(name, ["..."], line)
 
 class LexTest(unittest.TestCase):
     def test_pragma_split(self):
@@ -372,9 +364,7 @@ class LexTest(unittest.TestCase):
 
     def test_append_arguments(self):
         self.assertEquals(append_arguments("foo", ["1", "2", "3"], "foo('t', 's', 't')"), "foo('t', 's', 't', 1, 2, 3)")
-        self.assertEquals(make_variadic("foo('t', 's', 't')"), "foo('t', 's', 't', ...)")
-        self.assertEquals(make_variadic("foo('t', 's', 't')", "foo"), "foo('t', 's', 't', ...)")
-        self.assertEquals(make_variadic("foo('t', 's', 't')", "foo", ['t', 's', 't']), "foo('t', 's', 't', ...)")
+        self.assertEquals(append_arguments("foo", ["..."], "foo('t', 's', 't')"), "foo('t', 's', 't', ...)")
 
     def test_is_defdec(self):
         self.assertTrue(is_defdec("void foo(void);"))

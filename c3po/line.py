@@ -4,6 +4,7 @@ import sys
 import random
 from .lex import *
 
+#the usage between cleanline and line is that cleanline checks are faster but line should be used to preserve formatting
 
 #TODO replace regex with a lexer that isnt pattern based ()
 cxor_string = re.compile('^[\s]*#define ([a-zA-Z0-9_]+) "(.*)"')
@@ -177,10 +178,6 @@ class Line():
                     if is_variadic(args):
                         print("Function already variadic, unable to apply mangling to signature: '{}'".format(self.cleanline), file=sys.stderr)
                     elif is_defdec(self.cleanline):
-                        #only operate on the actual definitons not random calls
-                        self.line = make_variadic(self.line, func, args)
-                        #track that this line is not to be replaced its the definition for the replacement
-                        self.flags["variadic_def"] = True
                         if func not in multifile["mangle_variadic"]:
                             multifile["mangle_variadic"].append(func)
                         multifile["mangle"][func].append("variadic")
@@ -196,8 +193,14 @@ class Line():
     def resolve(self, multiline, multifile, shatterself, shatterother):
         #shuffle params first
         for key, value in multifile["mangle_params"].items():
-            if key in self.line:
+            if key in self.cleanline:
                 self.line = reorder_arguments(key, value, self.line)
+        for func in multifile["mangle_variadic"]:
+            if func in self.cleanline:
+                if is_defdec(self.line):
+                    self.line = append_arguments(func, ["..."],self.line)
+                else:
+                    self.line = append_arguments(func, ["1","2","3","4","5"],self.line)
         #break all the names
         for key, value in multifile["mangle_match"].items():
             if key in self.line:
