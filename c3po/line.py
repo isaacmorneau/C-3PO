@@ -183,6 +183,7 @@ class Line():
                         self.flags["variadic_def"] = True
                         if func not in multifile["mangle_variadic"]:
                             multifile["mangle_variadic"].append(func)
+                        multifile["mangle"][func].append("variadic")
                         #TODO append the va start and end to the line make sure its not optimized out
                         #additioinal checks for if this is a definition or a declaration are required
                     else:

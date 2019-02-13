@@ -79,6 +79,8 @@ class Project():
                 print(" : {}".format(self.multifile["mangle_match"][func+"("][:-1]), end="")
             if "shuffle" in opts:
                 print(" : {}".format(self.multifile["mangle_params"][func]), end="")
+            if "variadic" in opts:
+                print(" : <variadic>", end="")
             print("]")
 
     #this actually writes the completed files
