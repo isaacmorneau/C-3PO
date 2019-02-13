@@ -43,6 +43,8 @@ int main(void) {
     scoper(scoper(1, scoper(2, 3, 'c'), 'b', 'c', 'd'), 4, 'a', "hahaha");
 
     say_hi("testing variadic");
+    say_hi("with multiple");
+    say_hi("calls");
 
 #pragma c3po shatter(call, high, on)
     int i = 0;

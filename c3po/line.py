@@ -198,9 +198,11 @@ class Line():
         for func in multifile["mangle_variadic"]:
             if func in self.cleanline:
                 if is_defdec(self.line):
-                    self.line = append_arguments(func, ["..."],self.line)
+                    self.line = append_arguments(func, ["..."], self.line)
                 else:
-                    self.line = append_arguments(func, ["1","2","3","4","5"],self.line)
+                    #TODO allow randomization to be configurable
+                    additional_args = [str(secrets.randbelow(65534)) for i in range(secrets.randbelow(10) + 1)]
+                    self.line = append_arguments(func, additional_args, self.line)
         #break all the names
         for key, value in multifile["mangle_match"].items():
             if key in self.line:
