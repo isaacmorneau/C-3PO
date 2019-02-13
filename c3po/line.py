@@ -138,15 +138,21 @@ class Line():
                     multifile["mangle"][func] = []
 
                 if "params" in lastfeed:
-                    multifile["mangle"][func].append("params")
                     args = get_function_arguments(func, self.cleanline)
                     #this extra check is to make sure variadic functions still work
                     params = [i for i in range(len(args))]
-                    if args[-1] == "...":
-                        #dont mess with variadic functions last 2
-                        params = params[:-2]
-                    random.shuffle(params)
-                    multifile["mangle_params"][func] = params
+                    if is_variadic(args):
+                        if len(args) > 3:
+                            #theres no point of shuffling if theres only one position
+                            #dont mess with variadic functions last 2
+                            params = params[:-2]
+                            random.shuffle(params)
+                            multifile["mangle_params"][func] = params
+                            multifile["mangle"][func].append("params")
+                    else:
+                        random.shuffle(params)
+                        multifile["mangle_params"][func] = params
+                        multifile["mangle"][func].append("params")
                 if "name" in lastfeed:
                     #build the new name record it in the global func mangling table
                     multifile["mangle"][func].append("name")
