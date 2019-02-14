@@ -158,13 +158,15 @@ class Line():
                     #this extra check is to make sure variadic functions still work
                     params = [i for i in range(len(args))]
                     if is_variadic(args):
-                        if len(args) > 3:
+                        if len(args) > 2:
                             #theres no point of shuffling if theres only one position
                             #dont mess with variadic functions last 2
                             params = params[:-2]
                             random.shuffle(params)
                             multifile["mangle_params"][func] = params
                             multifile["mangle"][func].append("shuffle")
+                        else:
+                            print("Not enough arguments to make shuffling useful: '{}'".format(self.cleanline), file=sys.stderr)
                     else:
                         random.shuffle(params)
                         multifile["mangle_params"][func] = params

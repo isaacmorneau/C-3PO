@@ -8,8 +8,7 @@ echo "==> preparing for integration tests"
 
 echo "==> integration tests"
 for f in test/gen/*.c; do
-    echo "diffing $f and $f.valid"
-    diff -qy "$f" "$f.valid"
+    diff -qy "$f" "$f.valid" && echo "$f OK"
 done
 echo "==> complete"
 

@@ -71,10 +71,6 @@ class Project():
         for func, ops in self.multifile["mangle"].items():
             if "name" in ops:
                 self.multifile["mangle_match"][func+"("] = "sub_"+"".join("{:02x}".format(t) for t in [random.randint(0, 256) for i in range(2)])+"("
-            #as the shuffle order is dependant on a full line its done in the classify itself
-            #if "params" in ops:
-                #TODO actually parse and generate a shuffle order
-                #this is also where a variadic functions should be added
 
     #this will now chose what should be resolved in things such as the
     #asm labels to be chosen globally
@@ -86,6 +82,7 @@ class Project():
         if len(self.multifile["mangle"]) > 0:
             print("Functions mangled:")
         for func,opts in self.multifile["mangle"].items():
+            print(opts)
             print("    [{}".format(func), end="")
             if "name" in opts:
                 print(" : {}".format(self.multifile["mangle_match"][func+"("][:-1]), end="")
