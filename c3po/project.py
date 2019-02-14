@@ -82,7 +82,6 @@ class Project():
         if len(self.multifile["mangle"]) > 0:
             print("Functions mangled:")
         for func,opts in self.multifile["mangle"].items():
-            print(opts)
             print("    [{}".format(func), end="")
             if "name" in opts:
                 print(" : {}".format(self.multifile["mangle_match"][func+"("][:-1]), end="")

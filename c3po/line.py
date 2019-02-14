@@ -75,11 +75,11 @@ def shuffle(options, flags, index, multiline):
 def mangle(options, feedforward):
     feedforward["mangle"] = True
     for opt in options:
-        if "shuffle" in options:
+        if "shuffle" == opt:
             feedforward["shuffle"] = True
-        elif "name" in options:
+        elif "name" == opt:
             feedforward["name"] = True
-        elif "variadic" in options:
+        elif "variadic" == opt:
             feedforward["variadic"] = True
         else:
             print("Unrecognized option for mangle: '{}'".format(opt), file=sys.stderr)
@@ -152,7 +152,6 @@ class Line():
                 func = functions[0]
                 if func not in multifile["mangle"]:
                     multifile["mangle"][func] = []
-
                 if "shuffle" in lastfeed:
                     args = get_function_arguments(func, self.cleanline)
                     #this extra check is to make sure variadic functions still work
