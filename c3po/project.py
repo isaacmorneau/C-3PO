@@ -1,5 +1,7 @@
 from .file import File
-import os, secrets
+import os
+import secrets
+import random
 
 c3po_face ="""\033[33;m
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⠞⢙⠲⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
@@ -33,7 +35,14 @@ c3po_face ="""\033[33;m
       C PrePreProcessor Obfuscator\033[;m"""
 
 class Project():
-    def __init__(self, srcpath, dstpath):
+    def __init__(self, srcpath, dstpath, seed=None):
+        #we need repeatability
+        if not seed:
+            seed = "".join("{:02x}".format(t) for t in secrets.token_bytes(5))
+
+        print("Using seed: {}".format(seed))
+        random.seed(seed)
+
         #print(c3po)
 
         self.files = []
@@ -61,7 +70,7 @@ class Project():
         #mangle to match ida or binja labels
         for func, ops in self.multifile["mangle"].items():
             if "name" in ops:
-                self.multifile["mangle_match"][func+"("] = "sub_"+"".join("{:02x}".format(t) for t in secrets.token_bytes(2))+"("
+                self.multifile["mangle_match"][func+"("] = "sub_"+"".join("{:02x}".format(t) for t in [random.randint(0, 256) for i in range(2)])+"("
             #as the shuffle order is dependant on a full line its done in the classify itself
             #if "params" in ops:
                 #TODO actually parse and generate a shuffle order

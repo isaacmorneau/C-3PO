@@ -10,7 +10,7 @@ import unittest
 
 if __name__ == "__main__":
     def print_help():
-        print("usage: ./c3po.py /path/to/src /path/to/output")
+        print("usage: ./c3po.py /path/to/src /path/to/output <optional seed>")
         print("       ./c3po.py test")
         sys.exit(1)
     if len(sys.argv) == 1:
@@ -25,14 +25,17 @@ if __name__ == "__main__":
             print(runner.run(suite))
         else:
             print_help()
-    elif len(sys.argv) == 3:
+    else:
         srcfolder = sys.argv[1]
         dstfolder = sys.argv[2]
 
         if not os.path.exists(dstfolder):
             os.mkdir(dstfolder)
 
-        project = Project(srcfolder, dstfolder)
+        seed = None
+        if len(sys.argv) == 4:
+            seed = sys.argv[3]
+        project = Project(srcfolder, dstfolder, seed)
         project.parse()
         project.resolve()
         project.write()

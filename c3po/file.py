@@ -1,5 +1,7 @@
 from .line import Line
-import random, re, unittest
+import random
+import re
+import unittest
 
 #lines with only whitespace
 blankline = re.compile(r'^\s*$')

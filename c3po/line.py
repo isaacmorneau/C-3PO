@@ -1,5 +1,4 @@
 import re
-import secrets
 import sys
 import random
 from .lex import *
@@ -224,7 +223,7 @@ class Line():
 """.format(finalnamed)
                 else:
                     #TODO allow randomization to be configurable
-                    additional_args = [str(secrets.randbelow(65534)) for i in range(secrets.randbelow(10) + 1)]
+                    additional_args = [str(random.randrange(0, 65535)) for i in range(random.randrange(1, 10))]
                     self.line = append_arguments(func, additional_args, self.line)
         #break all the names
         for key, value in multifile["mangle_match"].items():
@@ -245,8 +244,8 @@ class Line():
                 if self.flags["cxor_minlength"] > len(string):
                     string += bytes([0 for i in range(self.flags["cxor_minlength"] - len(string))])
 
-            key1array = list(secrets.token_bytes(len(string)))
-            key2array = list(secrets.token_bytes(len(string)))
+            key1array = list(bytes([random.randrange(0, 256) for i in range(len(string))]))
+            key2array = list(bytes([random.randrange(0, 256) for i in range(len(string))]))
             #encrypt string with key
             newarray = [v ^ key1array[i] for i,v in enumerate(string)]
             #encrypt key with second key
