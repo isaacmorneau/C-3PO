@@ -81,7 +81,7 @@ def get_function_arguments(name, line):
             scope -= 1
             if scope == 0:
                 #last brace
-                return [a.strip() for a in args]
+                return [a.strip() for a in args if a.strip()]
         if c == ',' and scope == 1:
             args.append("")
         elif scope > 0:
@@ -300,6 +300,8 @@ def is_defdec(line, defdec = ['{', ';']):
     return len(tokens) > 1
 
 def get_token_names(args):
+    if not args:
+        return args
     parsed_args = []
     for arg in args:
         newnames = ''.join(c for c in arg.split()[-1] if c in string.ascii_letters or c in "_1234567890")

@@ -6,6 +6,8 @@ __pycache__/
 bin/
 #c3po output
 gen/
+#test output
+test/gen/*.c
 
 # Prerequisites
 *.d
