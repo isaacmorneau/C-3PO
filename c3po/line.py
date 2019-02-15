@@ -40,9 +40,9 @@ def cxor(options, flags):
 def shatter(options, flags):
     for opt in options:
         if opt == "on":
-            flags["cxor"] = True
+            flags["shatter"] = True
         elif opt == "off":
-            flags["cxor"] = False
+            flags["shatter"] = False
         elif opt == "jmp":
             flags["shatter_type"] = "jmp"
         elif opt == "call":

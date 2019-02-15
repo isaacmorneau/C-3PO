@@ -1,0 +1,42 @@
+#include <stdio.h>
+int main(void) {
+    puts("testing");
+    puts("shatter");
+    __asm__(
+        ".shatter2:"
+        "xor %%eax, %%eax;"
+        "test %%eax, %%eax;"
+        "jz .done2;"
+        "call .shatter1;"
+        ".done2:"
+        :::"%eax");
+    puts("graphs");
+    puts("1");
+    __asm__(
+        ".shatter0:"
+        "xor %%eax, %%eax;"
+        "test %%eax, %%eax;"
+        "jz .done0;"
+        "call .shatter2;"
+        ".done0:"
+        :::"%eax");
+    puts("2");
+    __asm__(
+        ".shatter1:"
+        "xor %%eax, %%eax;"
+        "test %%eax, %%eax;"
+        "jz .done1;"
+        "call .shatter3;"
+        ".done1:"
+        :::"%eax");
+    puts("3");
+    __asm__(
+        ".shatter3:"
+        "xor %%eax, %%eax;"
+        "test %%eax, %%eax;"
+        "jz .done3;"
+        "call .shatter0;"
+        ".done3:"
+        :::"%eax");
+    return 0;
+}
