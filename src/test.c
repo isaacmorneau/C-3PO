@@ -44,7 +44,9 @@ void thing(int a, int *b, char c, char *d, double e, double *f);
 #pragma c3po mangle(shuffle)
 void (*crazyfunc(int (a), int b, ...));
 
-int main(void) {
+int main(int argc, char **argv) {
+#pragma c3po assert(argc > 0)
+
     c3po_zero_elf();
 
     scoper(scoper(1, scoper(2, 3, 'c'), 'b', 'c', 'd'), 4, 'a', "hahaha");
