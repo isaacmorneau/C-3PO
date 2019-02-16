@@ -8,6 +8,8 @@ bin/
 gen/
 #test output
 test/gen/*.c
+#ripped site
+c3po/x86/
 
 # Prerequisites
 *.d
