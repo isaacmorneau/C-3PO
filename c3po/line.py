@@ -22,12 +22,29 @@ asmlbljmp = '''
         ".done{0}:"
         :::"%eax");'''
 
-bytelies = '''
-    __asm__(
-        ".byte 0x89;"
-        ".byte 0x84;"
-        ".byte 0xD9;"
-        :::);'''
+
+broken_options = [
+    #mov
+    [0x89,0x84,0xd9],
+    [0x48,0x89,0x44,0x24],
+    [0x64,0x48,0x8b,0x04],
+    [0x64,0x48,0x8b,0x04,0x25],
+    #shr
+    [0xc0,0xe8],
+    #vmovaps
+    [0xc5,0xf8,0x29,0x44,0x24],
+    #lea
+    [0x48,0x8d,0x44,0x24],
+    #xor
+    [0x64,0x48,0x33,0x04,0x25]
+]
+
+def broken_bytes(ops):
+    return '''
+        __asm__(
+            {}
+            :::);'''.format('\n            '.join("\".byte 0x{:x};\"".format(opt) for opt in ops))
+
 
 #functions to parse each directive
 def cxor(options, flags):
@@ -201,11 +218,6 @@ class Line():
 
             else:
                 print("Unable to apply mangling to signature: '{}'".format(self.cleanline), file=sys.stderr)
-        if "lie" in lastfeed:
-            if is_return(self.cleanline):
-                self.flags["lie_mark"] = True
-            else:
-                print("Unable to apply lie to non return: '{}'".format(self.cleanline), file=sys.stderr)
 
 
     def resolve(self, multiline, multifile, shatterself, shatterother):
@@ -295,7 +307,7 @@ class Line():
             args = ", ".join(get_function_arguments("assert", self.cleanline))
             self.line = "    if(!({})) {{".format(args)
             #TODO collect any asm nasties to troll the disassembler in here
-            self.line += bytelies
+            self.line += broken_bytes(random.choice(broken_options))
             self.line += "\n    }"
 
 
