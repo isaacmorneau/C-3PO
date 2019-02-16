@@ -291,10 +291,12 @@ class Line():
             multiline["asm"]["index"] += 1
         if "assert_mark" in self.flags:
             args = ", ".join(get_function_arguments("assert", self.cleanline))
-            self.line = "    if(!({})) {{".format(args)
+            self.line = '''    {{
+        volatile bool assert_check =!({});
+        if (assert_check) {{'''.format(args)
             #TODO collect any asm nasties to troll the disassembler in here
             self.line += broken_bytes()
-            self.line += "\n    }"
+            self.line += "\n        }\n    }"
 
 
 

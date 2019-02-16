@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdbool.h>
 
 #include "c3po.h"
 #include "test.h"
@@ -58,7 +59,10 @@ int main(int argc, char **argv) {
 #pragma c3po shatter(call, high, on)
     int i = 0;
 
+#pragma c3po assert(i == 0)
+
     for (int j = 0; j < 40; ++j) {
+#pragma c3po assert(j < 50)
         supercall(j);
     }
 
@@ -84,6 +88,7 @@ int main(int argc, char **argv) {
 
 #pragma c3po shuffle(off)
 
+#pragma c3po assert(i != 0)
     printf("i:%d\n", i);
 
 #pragma c3po shatter(off)
