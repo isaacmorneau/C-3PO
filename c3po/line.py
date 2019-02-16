@@ -2,6 +2,7 @@ import re
 import sys
 import random
 from .lex import *
+from .asm import *
 
 #the usage between cleanline and line is that cleanline checks are faster but line should be used to preserve formatting
 
@@ -22,28 +23,9 @@ asmlbljmp = '''
         ".done{0}:"
         :::"%eax");'''
 
-
-broken_options = [
-    #jmp
-    [0x7f],
-    [0x74],
-    #mov
-    [0x89,0x84,0xd9],
-    [0x48,0x89,0x44,0x24],
-    [0x64,0x48,0x8b,0x04],
-    [0x64,0x48,0x8b,0x04,0x25],
-    #shr
-    [0xc0,0xe8],
-    #vmovaps
-    [0xc5,0xf8,0x29,0x44,0x24],
-    #lea
-    [0x48,0x8d,0x44,0x24],
-    #xor
-    [0x64,0x48,0x33,0x04,0x25],
-]
-
 def broken_bytes():
-    ops = random.choice(broken_options)
+    #select command then option within it
+    ops = random.choice(random.choice(everyopt))
     return '''
         __asm__(
             {}
