@@ -225,6 +225,7 @@ def is_c3po_pragma(line):
 
 #turn directive1(opt1, opt2) directive2(opt1) into {"directive1":["opt1", "opt2"], "directive2":["opt1"]}
 def pragma_split(line):
+    #TODO handle further scoping in some way
     if len(line) == 0:
         return {}
 
@@ -309,10 +310,17 @@ def get_token_names(args):
             parsed_args.append(newnames)
     return parsed_args
 
+#intended to operate on cleanline
+def is_return(line):
+    if "return" not in line:
+        return False
+    return line.startswith("return")
+
 def is_variadic(args):
     return args and args[-1] == "..."
 
 class LexTest(unittest.TestCase):
+    #TODO none of the current parsers respect string literals containing the code they are expecting
     def test_pragma_split(self):
         self.assertEquals(pragma_split("test(option, option)"), {"test":["option", "option"]})
         self.assertEquals(pragma_split("test"), {"test":[]})

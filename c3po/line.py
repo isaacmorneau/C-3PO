@@ -12,7 +12,7 @@ cxor_string = re.compile('^[\s]*#define ([a-zA-Z0-9_]+) "(.*)"')
 #    __asm__(".shatter{0}:");
 #"""
 
-asmlbljmp = """
+asmlbljmp = '''
     __asm__(
         ".shatter{0}:"
         "xor %%eax, %%eax;"
@@ -20,7 +20,14 @@ asmlbljmp = """
         "jz .done{0};"
         "{2} .shatter{1};"
         ".done{0}:"
-        :::"%eax");"""# me, you, type
+        :::"%eax");'''
+
+bytelies = '''
+    __asm__(
+        ".byte 0x89;"
+        ".byte 0x84;"
+        ".byte 0xD9;"
+        :::);'''
 
 #functions to parse each directive
 def cxor(options, flags):
@@ -103,21 +110,27 @@ class Line():
         feedforward = {}
         #do all pragama matches first
         if is_c3po_pragma(self.cleanline):
-            self.isflag = True
-            pragma = pragma_split(self.cleanline)
-            for directive, options in pragma.items():
-                if directive == "cxor":
-                    cxor(options, flags)
-                elif directive == "shatter":
-                    shatter(options, flags)
-                elif directive == "shuffle":
-                    shuffle(options, flags, self.index, multiline)
-                elif directive == "case":
-                    multiline["shuffle"][-1][2].append([])
-                elif directive == "mangle":
-                    mangle(options, feedforward)
-                else:
-                    print("Unrecognized directive '{}'".format(directive), file=sys.stderr)
+            if "assert" in self.cleanline:
+                #early exit as its replacing the line not signalling the future
+                self.flags = dict(flags)
+                self.flags["assert_mark"] = True
+                return feedforward
+            else:
+                self.isflag = True
+                pragma = pragma_split(self.cleanline)
+                for directive, options in pragma.items():
+                    if directive == "cxor":
+                        cxor(options, flags)
+                    elif directive == "shatter":
+                        shatter(options, flags)
+                    elif directive == "shuffle":
+                        shuffle(options, flags, self.index, multiline)
+                    elif directive == "case":
+                        multiline["shuffle"][-1][2].append([])
+                    elif directive == "mangle":
+                        mangle(options, feedforward)
+                    else:
+                        print("Unrecognized directive '{}'".format(directive), file=sys.stderr)
         #copy the state we set
         self.flags = dict(flags)
 
@@ -188,6 +201,11 @@ class Line():
 
             else:
                 print("Unable to apply mangling to signature: '{}'".format(self.cleanline), file=sys.stderr)
+        if "lie" in lastfeed:
+            if is_return(self.cleanline):
+                self.flags["lie_mark"] = True
+            else:
+                print("Unable to apply lie to non return: '{}'".format(self.cleanline), file=sys.stderr)
 
 
     def resolve(self, multiline, multifile, shatterself, shatterother):
@@ -256,7 +274,7 @@ class Line():
             key1array.append(0)
             key2array.append(0)
             #this replaces the line so it must be before it
-            self.line ="""//#define {1} "{0}"
+            self.line = """//#define {1} "{0}"
 #define {1}_ENC {{{3}}}
 #define {1}_KEY1 {{{4}}}
 #define {1}_KEY2 {{{5}}}
@@ -267,12 +285,20 @@ class Line():
                               ','.join(hex(e) for e in key1array),
                               ','.join(hex(e) for e in key2array)
                               )
-        elif "shatter_mark" in self.flags and self.flags["shatter_mark"]:
+        if "shatter_mark" in self.flags and self.flags["shatter_mark"]:
             #build a shatter section
             self.line += asmlbljmp.format(shatterself[multiline["asm"]["index"]],
                                           shatterother[multiline["asm"]["index"]],
                                           self.flags["shatter_type"])
             multiline["asm"]["index"] += 1
+        if "assert_mark" in self.flags:
+            args = ", ".join(get_function_arguments("assert", self.cleanline))
+            self.line = "    if({}) {{".format(args)
+            #TODO collect any asm nasties to troll the disassembler in here
+            self.line += bytelies
+            self.line += "\n    }"
+
+
 
 
     def write(self, file):

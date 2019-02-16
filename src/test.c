@@ -29,9 +29,12 @@ void say_hi(const char *msg) {
 #pragma c3po mangle(shuffle, name)
 int scoper(int s, int v, ...)
 {
+#pragma c3po assert(s > 0)
+#pragma c3po assert(v > 0)
     //so much
     (void)v;/* garbage */
-    return s;
+    volatile int b = s + v;
+    return b;
 }
 
 #pragma c3po mangle(shuffle)
