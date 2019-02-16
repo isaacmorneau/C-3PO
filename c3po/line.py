@@ -24,6 +24,9 @@ asmlbljmp = '''
 
 
 broken_options = [
+    #jmp
+    [0x7f],
+    [0x74],
     #mov
     [0x89,0x84,0xd9],
     [0x48,0x89,0x44,0x24],
@@ -36,10 +39,11 @@ broken_options = [
     #lea
     [0x48,0x8d,0x44,0x24],
     #xor
-    [0x64,0x48,0x33,0x04,0x25]
+    [0x64,0x48,0x33,0x04,0x25],
 ]
 
-def broken_bytes(ops):
+def broken_bytes():
+    ops = random.choice(broken_options)
     return '''
         __asm__(
             {}
@@ -307,7 +311,7 @@ class Line():
             args = ", ".join(get_function_arguments("assert", self.cleanline))
             self.line = "    if(!({})) {{".format(args)
             #TODO collect any asm nasties to troll the disassembler in here
-            self.line += broken_bytes(random.choice(broken_options))
+            self.line += broken_bytes()
             self.line += "\n    }"
 
 
