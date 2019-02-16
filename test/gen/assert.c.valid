@@ -1,20 +1,23 @@
 int main(int argc, char **argv) {
-    if(!(argc > 0)) {
+    {
+        volatile bool assert_check =!(argc > 0);
+        if (assert_check) {
         __asm__(
-            ".byte 0x64;"
-            ".byte 0x48;"
-            ".byte 0x8b;"
-            ".byte 0x4;"
+            ".byte 0xf2;"
+            ".byte 0xf;"
+            ".byte 0x5e;"
             :::);
+        }
     }
-    if(!(argv[0] != NULL)) {
+    {
+        volatile bool assert_check =!(argv[0] != NULL);
+        if (assert_check) {
         __asm__(
-            ".byte 0x64;"
-            ".byte 0x48;"
-            ".byte 0x33;"
-            ".byte 0x4;"
-            ".byte 0x25;"
+            ".byte 0x66;"
+            ".byte 0xf;"
+            ".byte 0xc5;"
             :::);
+        }
     }
     return 0;
 }
