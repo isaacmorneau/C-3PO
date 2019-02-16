@@ -1,0 +1,17 @@
+int main(int argc, char **argv) {
+    if(!(argc > 0)) {
+    __asm__(
+        ".byte 0x89;"
+        ".byte 0x84;"
+        ".byte 0xD9;"
+        :::);
+    }
+    if(!(argv[0] != NULL)) {
+    __asm__(
+        ".byte 0x89;"
+        ".byte 0x84;"
+        ".byte 0xD9;"
+        :::);
+    }
+    return 0;
+}
