@@ -2,12 +2,24 @@
 import string
 import unittest
 
-#sigh
-operators = ["++", "--", "+", "-", "*", "/", "!", "~", "^", "&", "|", "%", "<<", ">>", "=","+=", "-=", "*=", "/=", "~=", "^=", "&=", "|=", "%=", "<<=", ">>=", "&&", "||", "!=", "==", "?", ":"]
-#* can be in declarations
-functionless_operators = ["++", "--", "+", "-", "/", "!", "~", "^", "&", "|", "%", "<<", ">>", "=","+=", "-=", "*=", "/=", "~=", "^=", "&=", "|=", "%=", "<<=", ">>=", "&&", "||", "!=", "==", "?", ":"]
-
-conditionals = ["if", "while", "for"]
+operators = ["+","-", "*", "/", "%","++", "--",
+             "==", "!=", ">", "<", ">=", "<=",
+             "&&", "||", "!",
+             "&", "|", "^", "~", "<<", ">>",
+             "=", "+=", "-=", "*=", "/=", "%=", "<<=", ">>=", "&=", "^=", "|=",
+             "?", ":", "->", ".", "(", ")","[", "]"]
+#these disqualify function definitions and declarations
+not_function_definition = "+-/%=!><&|^~?:"
+#all reserved words
+reserved_words =["if", "else",
+                 "while", "for", "do", "continue",
+                 "switch", "case", "default",
+                 "int", "float", "char", "double", "long",
+                 "auto", "signed", "const", "extern", "register", "unsigned", "volatile",
+                 "sizeof", "void", "goto", "return",
+                 "enum", "struct", "typedef", "union"]
+#make sure this arent counted in function extraction
+functionlike = ["if", "while", "for"]
 
 #main methods for line decomposition
 def is_function(line):
@@ -28,7 +40,7 @@ def is_function(line):
         if c in string.ascii_letters:
             current_token += c
             token = True
-        elif c == '(' and current_token and current_token not in conditionals:
+        elif c == '(' and current_token and current_token not in functionlike:
             return True
         else:
             current_token = ""
@@ -53,7 +65,7 @@ def has_function(name, line):
         if c in string.ascii_letters:
             current_token += c
             token = True
-        elif c == '(' and current_token not in conditionals:
+        elif c == '(' and current_token not in functionlike:
             if current_token == name:
                 return True
             else:
@@ -108,7 +120,7 @@ def get_function_calls(line):
         if c in string.ascii_letters or c in "_1234567890":
             current_token += c
             token = True
-        elif c == '(' and current_token and current_token not in conditionals:
+        elif c == '(' and current_token and current_token not in functionlike:
             #function call
             functions.append(current_token)
             current_token = ""
@@ -280,18 +292,18 @@ def pragma_split(line):
 
 #this handles both definitions and declarations
 def is_defdec(line, defdec = ['{', ';']):
-    if line[-1] not in defdec or line[0] == '(' or any(operator in line for operator in functionless_operators):
+    if line[-1] not in defdec or line[0] == '(' or any(operator in line for operator in not_function_definition):
         return False
 
     tokens = []
     current_token = ""
     for c in line:
         if c == '(':
-            if current_token and current_token not in conditionals:
+            if current_token and current_token not in functionlike:
                 tokens.append(current_token)
                 break
         elif c == " ":
-            if current_token and current_token not in conditionals:
+            if current_token and current_token not in functionlike:
                 tokens.append(current_token)
             current_token = ""
         elif c != ")":
@@ -310,10 +322,26 @@ def get_token_names(args):
             parsed_args.append(newnames)
     return parsed_args
 
+def get_string_define(line):
+    token = ""
+    for i,c in enumerate(line[7:]):
+        if c == " ":
+            return {token:line[i:].strip()}
+        else:
+            token += c
+
+
+def is_string_define(line):
+    if line.startswith("#define"):
+        for c in line:
+            if c == '"':
+                return True
+            elif c == '(':
+                return False
+    return False
+
 #intended to operate on cleanline
 def is_return(line):
-    if "return" not in line:
-        return False
     return line.startswith("return")
 
 def is_variadic(args):
@@ -431,3 +459,7 @@ class LexTest(unittest.TestCase):
         self.assertEquals(get_token_names(["int (*a)"]), ["a"])
         self.assertEquals(get_token_names(["(*a)"]), ["a"])
         self.assertEquals(get_token_names(["(void *)a"]), ["a"])
+
+    def test_get_token_names(self):
+        self.assertTrue(is_string_define("#define A \"string\""))
+        self.assertFalse(is_string_define("#define A 0x1234"))

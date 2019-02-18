@@ -6,13 +6,6 @@ from .asm import *
 
 #the usage between cleanline and line is that cleanline checks are faster but line should be used to preserve formatting
 
-#TODO replace regex with a lexer that isnt pattern based ()
-cxor_string = re.compile('^[\s]*#define ([a-zA-Z0-9_]+) "(.*)"')
-
-#asmlbl = """
-#    __asm__(".shatter{0}:");
-#"""
-
 asmlbljmp = '''
     __asm__(
         ".shatter{0}:"
@@ -31,21 +24,6 @@ def broken_bytes():
             {}
             :::);'''.format('\n            '.join("\".byte 0x{:x};\"".format(opt) for opt in ops))
 
-
-#functions to parse each directive
-def cxor(options, flags):
-    for opt in options:
-        if opt == "on":
-            flags["cxor"] = True
-        elif opt == "off":
-            flags["cxor"] = False
-        else:
-            try:
-                flags["cxor_minlength"] = int(opt)
-            except ValueError as ex:
-                print("Failed to parse padding optionue for cxor '{}' number was expected".format(opt), file=sys.stderr)
-    if len(options) == 0:
-        print("Cxor not turned on or off, unused directive", file=sys.stderr)
 
 def shatter(options, flags):
     for opt in options:
@@ -97,6 +75,19 @@ def mangle(options, feedforward):
         #TODO decide what the default behavior for mangle
         pass
 
+def encrypt(options, feedforward):
+    feedforward["encrypt"] = True
+    feedforward["mode"] = "aes"
+    for opt in options:
+        if opt == "aes":
+            feedforward["mode"] = "aes"
+            #no other modes supported yet
+        else:
+            try:
+                feedforward["padding"] = int(opt)
+            except ValueError as ex:
+                print("Unrecognized option for encrypt: '{}'".format(opt), file=sys.stderr)
+
 class Line():
     def __init__(self, index, rawline):
         self.line = rawline
@@ -122,16 +113,20 @@ class Line():
                 self.isflag = True
                 pragma = pragma_split(self.cleanline)
                 for directive, options in pragma.items():
-                    if directive == "cxor":
-                        cxor(options, flags)
-                    elif directive == "shatter":
+                    if directive == "shatter":
                         shatter(options, flags)
+
                     elif directive == "shuffle":
                         shuffle(options, flags, self.index, multiline)
                     elif directive == "case":
                         multiline["shuffle"][-1][2].append([])
+
                     elif directive == "mangle":
                         mangle(options, feedforward)
+
+                    elif directive == "encrypt":
+                        encrypt(options, feedforward)
+
                     else:
                         print("Unrecognized directive '{}'".format(directive), file=sys.stderr)
         #copy the state we set
@@ -155,9 +150,6 @@ class Line():
             self.flags["shatter_mark"] = True
             multiline["asm"]["indexes"].append(multiline["asm"]["index"])
             multiline["asm"]["index"] += 1
-
-        if self.flags["cxor"] and cxor_string.match(self.cleanline):
-            self.flags["cxor_mark"] = True
 
         #last feed checks are for next line affecting pragmas
         if "mangle" in lastfeed:
@@ -204,6 +196,9 @@ class Line():
 
             else:
                 print("Unable to apply mangling to signature: '{}'".format(self.cleanline), file=sys.stderr)
+        if "encrypt" in lastfeed:
+            if is_string_define(self.cleanline):
+                pass
 
 
     def resolve(self, multiline, multifile, shatterself, shatterother):
@@ -247,42 +242,6 @@ class Line():
             if key in self.line:
                 self.line = self.line.replace(key, value)
 
-
-        if "cxor_mark" in self.flags and self.flags["cxor_mark"]:
-            parts = cxor_string.search(self.cleanline)
-            varname = parts.group(1)
-            original = parts.group(2)
-            #magic to parse escapes
-            #thanks jerub https://stackoverflow.com/a/4020824
-            string = bytes(original, "utf-8").decode("unicode_escape").encode()
-
-            #handle requested padding of strings
-            if "cxor_minlength" in self.flags:
-                if self.flags["cxor_minlength"] > len(string):
-                    string += bytes([0 for i in range(self.flags["cxor_minlength"] - len(string))])
-
-            key1array = list(bytes([random.randrange(0, 256) for i in range(len(string))]))
-            key2array = list(bytes([random.randrange(0, 256) for i in range(len(string))]))
-            #encrypt string with key
-            newarray = [v ^ key1array[i] for i,v in enumerate(string)]
-            #encrypt key with second key
-            key1array = [v ^ key2array[i] for i,v in enumerate(key1array)]
-
-            newarray.append(0)
-            key1array.append(0)
-            key2array.append(0)
-            #this replaces the line so it must be before it
-            self.line = """//#define {1} "{0}"
-#define {1}_ENC {{{3}}}
-#define {1}_KEY1 {{{4}}}
-#define {1}_KEY2 {{{5}}}
-#define {1}_LEN {2}""".format(original,
-                              varname,
-                              len(newarray),
-                              ','.join(hex(e) for e in newarray),
-                              ','.join(hex(e) for e in key1array),
-                              ','.join(hex(e) for e in key2array)
-                              )
         if "shatter_mark" in self.flags and self.flags["shatter_mark"]:
             #build a shatter section
             self.line += asmlbljmp.format(shatterself[multiline["asm"]["index"]],

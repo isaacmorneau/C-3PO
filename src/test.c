@@ -69,12 +69,12 @@ int main(int argc, char **argv) {
 #pragma c3po shuffle(on)
 
     i += 3245;
-    C3PO_STR(printf("decoded '%s'\n", c3po_str), BSTR);
+    printf("decoded '%s'\n", BSTR);
 
 #pragma c3po case
 
     i -= 32225;
-    C3PO_STR(printf("decoded '%s'\n", c3po_str), CSTR);
+    printf("decoded '%s'\n", CSTR);
 
 #pragma c3po case
 
