@@ -146,9 +146,6 @@ static void KeyExpansion(uint8_t *RoundKey, const uint8_t *Key) {
         RoundKey[j + 3] = RoundKey[k + 3] ^ tempa[3];
     }
 }
-void AES_init_ctx(struct AES_ctx *ctx, const uint8_t *key) {
-    KeyExpansion(ctx->RoundKey, key);
-}
 void AES_init_ctx_iv(struct AES_ctx *ctx, const uint8_t *key, const uint8_t *iv) {
     KeyExpansion(ctx->RoundKey, key);
     memcpy(ctx->Iv, iv, AES_BLOCKLEN);
