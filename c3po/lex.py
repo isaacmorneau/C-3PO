@@ -120,7 +120,7 @@ def get_function_calls(line):
         if c in string.ascii_letters or c in "_1234567890":
             current_token += c
             token = True
-        elif c == '(' and current_token and current_token not in functionlike:
+        elif c == '(' and current_token and current_token not in reserved_words:
             #function call
             functions.append(current_token)
             current_token = ""
@@ -235,6 +235,16 @@ def is_c3po_pragma(line):
         return True
     return False
 
+def is_include(line):
+    #TODO whitespace agnostic
+    if "#include " in line:
+        return True
+    return False
+
+def get_include(line):
+    if line.startswith("#include"):
+        return line[9:].strip()[1:-1]
+
 #turn directive1(opt1, opt2) directive2(opt1) into {"directive1":["opt1", "opt2"], "directive2":["opt1"]}
 def pragma_split(line):
     #TODO handle further scoping in some way
@@ -328,10 +338,11 @@ def get_token_names(args):
 def get_string_define(line):
     token = ""
     #start after '#define '
-    for i,c in enumerate(line[8:]):
+    cleaned = line[7:].strip()
+    for i,c in enumerate(cleaned):
         if c == " " and token:
             #parse escapes out of c string then strip enclosing quotes, includes null termination
-            real_line = (bytes(line[8+i:].strip(), "utf-8").decode("unicode_escape")[1:-1]+'\0').encode()
+            real_line = (bytes(cleaned[i:].strip(), "utf-8").decode("unicode_escape")[1:-1]+'\0').encode()
             return token, list(real_line)
         else:
             token += c
@@ -473,6 +484,15 @@ class LexTest(unittest.TestCase):
         self.assertFalse(is_string_define("#define A 0x1234"))
 
     def test_get_string_define(self):
-        self.assertTrue(get_string_define("#define A \"string\""), ("A","string\0"))
-        self.assertTrue(get_string_define("#define     B      \"string\""),("B", "string\0"))
-        self.assertTrue(get_string_define("#define something_longer    \"a string with escapes \\\" in it\""), ("something_longer","a string with escapes \" in it\0"))
+        self.assertEquals(get_string_define("#define A \"string\""),
+                          ("A",list("string\0".encode())))
+        self.assertEquals(get_string_define("#define     B      \"string\""),
+                          ("B", list("string\0".encode())))
+        self.assertEquals(get_string_define("#define something_longer    \"a string with escapes \\\" in it\""),
+                          ("something_longer",list("a string with escapes \" in it\0".encode())))
+
+    def test_get_include(self):
+        self.assertEquals(get_include("#include \"my_include.h\""), "my_include.h")
+        self.assertEquals(get_include("#include <stdint.h>"), "stdint.h")
+        self.assertEquals(get_include("#include    <stdint.h>  "), "stdint.h")
+
