@@ -198,8 +198,19 @@ class Line():
                 print("Unable to apply mangling to signature: '{}'".format(self.cleanline), file=sys.stderr)
         if "encrypt" in lastfeed:
             if is_string_define(self.cleanline):
-                pass
-
+                token, value = get_string_define(self.cleanline)
+                self.flags["encrypt_mark"] = True
+                if token not in multifile["encrypt"]:
+                    #[string with null termination][PKCS7 padding]
+                    padding = 16 - len(value) % 16
+                    #always pad
+                    if padding > 0:
+                        value.extend([padding for i in range(padding)])
+                    else:
+                        value.extend([16 for i in range(padding)])
+                    multifile["encrypt"][token] = value
+            else:
+                print("Cannot encrypt non string defines yet: '{}'".format(self.cleanline), file=sys.stderr)
 
     def resolve(self, multiline, multifile, shatterself, shatterother):
         #shuffle params first
@@ -239,8 +250,37 @@ class Line():
                     self.line = append_arguments(func, additional_args, self.line)
         #break all the names
         for key, value in multifile["mangle_match"].items():
-            if key in self.line:
+            if key in self.cleanline:
                 self.line = self.line.replace(key, value)
+        #TODO as above change access to encrypted strings to include the code to decrypt
+        for token, value in multifile["encrypt"].items():
+            if token in self.cleanline and not is_string_define(self.cleanline):
+                #AES 256 requires 32 byte key lengths
+                key = list(bytes([random.randrange(0, 256) for i in range(32)]))
+                iv = list(bytes([random.randrange(0, 256) for i in range(16)]))
+                builtdata = '''{{{},
+             {},
+             {}}}'''.format(", ".join("0x{:02x}".format(k) for k in key),
+                                        ", ".join("0x{:02x}".format(i) for i in iv),
+                                        ", ".join("0x{:02x}".format(v) for v in value))
+                multifile["post_encrypt"].append((key, len(value)))
+                self.line = """
+    {{
+        //[32 bytes key][16 bytes iv][encrypted bytes]
+        volatile uint8_t _{0}_data[] = {1};
+        uint8_t* _{0}_key = (uint8_t*)_{0}_data;
+        uint8_t* _{0}_iv = (uint8_t*)_{0}_data + 32;
+        uint8_t* _{0}_enc = (uint8_t*)_{0}_data + 48;
+
+        struct AES_ctx ctx;
+        AES_init_ctx_iv(&ctx, _{0}_key, _{0}_iv);
+        AES_CBC_decrypt_buffer(&ctx, _{0}_enc, {2});
+
+        //TODO verify padding
+        char* {0} = (char*)_{0}_enc;
+        {3}
+    }}
+""".format(token, builtdata, len(value), self.cleanline)
 
         if "shatter_mark" in self.flags and self.flags["shatter_mark"]:
             #build a shatter section
@@ -248,17 +288,20 @@ class Line():
                                           shatterother[multiline["asm"]["index"]],
                                           self.flags["shatter_type"])
             multiline["asm"]["index"] += 1
+
         if "assert_mark" in self.flags:
             args = ", ".join(get_function_arguments("assert", self.cleanline))
+
             self.line = '''    {{
         volatile bool assert_check =!({});
         if (assert_check) {{'''.format(args)
+
             #TODO collect any asm nasties to troll the disassembler in here
             self.line += broken_bytes()
             self.line += "\n        }\n    }"
 
-
-
+        if "encrypt_mark" in self.flags:
+            self.line = "//the following constant is included encrypted inline\n//"+self.cleanline
 
     def write(self, file):
         if self.isflag:

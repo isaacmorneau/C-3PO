@@ -56,6 +56,11 @@ class Project():
             "mangle_params":{},
             #[functions to be variadically mangled]
             "mangle_variadic":[],
+            #token name: [padded string bytes]
+            "encrypt":{},
+            #to be encrypted after the encryption
+            #[(key, length)]
+            "post_encrypt":[],
         }
         #load all the files in one go just making sure they are c and real
         self.files = [File(index, os.path.join(srcpath, file), os.path.join(dstpath, file)) for index, file in enumerate(os.listdir(srcpath)) if os.path.isfile(os.path.join(srcpath, file)) and (file.endswith(".c") or file.endswith(".h"))]

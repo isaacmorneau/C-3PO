@@ -312,25 +312,32 @@ def is_defdec(line, defdec = ['{', ';']):
     #unless theres a return type its not a declaration
     return len(tokens) > 1
 
+#get all the names of the arguments in an argument list
 def get_token_names(args):
     if not args:
         return args
     parsed_args = []
     for arg in args:
+        #sanitize the last part of every token 'const int var' -> 'var'
         newnames = ''.join(c for c in arg.split()[-1] if c in string.ascii_letters or c in "_1234567890")
         if newnames:
             parsed_args.append(newnames)
     return parsed_args
 
+#get the token and bytes for a c define
 def get_string_define(line):
     token = ""
-    for i,c in enumerate(line[7:]):
-        if c == " ":
-            return {token:line[i:].strip()}
+    #start after '#define '
+    for i,c in enumerate(line[8:]):
+        if c == " " and token:
+            #parse escapes out of c string then strip enclosing quotes, includes null termination
+            real_line = (bytes(line[8+i:].strip(), "utf-8").decode("unicode_escape")[1:-1]+'\0').encode()
+            return token, list(real_line)
         else:
             token += c
+    return None, None
 
-
+#check if a clean line is a valid string constant
 def is_string_define(line):
     if line.startswith("#define"):
         for c in line:
@@ -460,6 +467,12 @@ class LexTest(unittest.TestCase):
         self.assertEquals(get_token_names(["(*a)"]), ["a"])
         self.assertEquals(get_token_names(["(void *)a"]), ["a"])
 
-    def test_get_token_names(self):
+    def test_is_string_define(self):
         self.assertTrue(is_string_define("#define A \"string\""))
+        self.assertTrue(is_string_define("#define     B      \"string\""))
         self.assertFalse(is_string_define("#define A 0x1234"))
+
+    def test_get_string_define(self):
+        self.assertTrue(get_string_define("#define A \"string\""), ("A","string\0"))
+        self.assertTrue(get_string_define("#define     B      \"string\""),("B", "string\0"))
+        self.assertTrue(get_string_define("#define something_longer    \"a string with escapes \\\" in it\""), ("something_longer","a string with escapes \" in it\0"))
