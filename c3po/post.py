@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 from Crypto.Cipher import AES
 
@@ -58,7 +59,7 @@ class PostProcess():
             cipher = AES.new(bytes(key_data), AES.MODE_CBC, bytes(iv_data))
             enc_data = list(cipher.encrypt(bytes(raw_data)))
 
-            print("  {}{}".format(''.join("{:02x}".format(k) for k in raw_data[:32]),
+            print("    {}{}".format(''.join("{:02x}".format(k) for k in raw_data[:32]),
                                   "" if len(raw_data) <= 32 else "...{} bytes more".format(len(raw_data)-32)))
 
             #overwrite the raw data with the encrypted version
