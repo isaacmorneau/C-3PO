@@ -132,11 +132,27 @@ class File():
             chunked_iv = ["(void*)0x"+''.join("{:02x}".format(c) for c in reversed(iv[i*mode:i*mode+mode])) for i in range(int(len(iv)/mode))]
             #encode how much space the function pointers will take up
             total_len = len(key) + len(iv) + len(self.multiline["encrypt_functions"])*mode
+            padding = 16 - total_len % 16
+            pkc = None
+            #always pad
+            if padding > 0:
+                pkc = [padding for i in range(padding)]
+                total_len += padding
+            else:
+                pkc = [16 for i in range(16)]
+                total_len += 16
+            chunked_pkc = ["(void*)0x"+''.join("{:02x}".format(c) for c in reversed(pkc[i*mode:i*mode+mode])) for i in range(int(len(pkc)/mode))]
+
+
             multifile["post_encrypt"].append({"key":key,"len":total_len})
 
             built_struct = '''{{{},
         {},
-        {}}}'''.format(", ".join(chunked_key), ", ".join(chunked_iv), ", ".join(self.multiline["encrypt_functions"]))
+        {},
+        {}}}'''.format(", ".join(chunked_key),
+                       ", ".join(chunked_iv),
+                       ", ".join(self.multiline["encrypt_functions"]),
+                       ", ".join(chunked_pkc))
 
             header = '''
 static volatile void * volatile c3po_functions_map[];
