@@ -33,10 +33,11 @@ add_executable(c3po ${SOURCES})
 target_compile_definitions(c3po PRIVATE C3PO)
 
 add_executable(c3pod ${SOURCES_DEBUG})
+include_directories("${CMAKE_CURRENT_BINARY_DIR}" "./src")
 
 #also depends on gen for actual sources
 #this will consume all .c and .h files in src and after parsing will put them in c3po
-add_custom_target(gen_c3po ALL COMMAND python3 "${PROJECT_SOURCE_DIR}/c3po.py" "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/gen")
+add_custom_target(gen_c3po ALL COMMAND python3 "${PROJECT_SOURCE_DIR}/c3po.py" "build" "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/gen")
 #ensure code works before attempting generation
 add_dependencies(gen_c3po c3pod)
 #this ensures that they will be deleted on clean
@@ -46,8 +47,9 @@ add_dependencies(c3po gen_c3po)
 
 #used to trigger the full strip after the fact
 add_custom_target(strip_c3po ALL COMMAND strip -R .comment -R .note -R .note.ABI-tag -R .note.gnu.build-id -R .gnu.hash -R .gnu.version "${PROJECT_BINARY_DIR}/c3po")
-include_directories("${CMAKE_CURRENT_BINARY_DIR}" "./src")
 add_dependencies(strip_c3po c3po)
+add_custom_target(post_c3po ALL COMMAND python3 ${PROJECT_SOURCE_DIR}/c3po.py "post" "${PROJECT_BINARY_DIR}/c3po")
+add_dependencies(post_c3po strip_c3po)
 
 
 if (CMAKE_BUILD_TYPE EQUAL Release)

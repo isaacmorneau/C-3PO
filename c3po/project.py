@@ -2,6 +2,7 @@ from .file import File
 import os
 import secrets
 import random
+import json
 
 c3po_face ="""\033[33;m
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⠞⢙⠲⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
@@ -64,6 +65,8 @@ class Project():
         }
         #load all the files in one go just making sure they are c and real
         self.files = [File(index, os.path.join(srcpath, file), os.path.join(dstpath, file)) for index, file in enumerate(os.listdir(srcpath)) if os.path.isfile(os.path.join(srcpath, file)) and (file.endswith(".c") or file.endswith(".h"))]
+        self.srcpath = srcpath
+        self.dstpath = dstpath
 
     #this performs the inital tokenization and collection of info
     #this will find the positions for future resolution
@@ -102,3 +105,6 @@ class Project():
         for file in self.files:
             print("    {}".format(file))
             file.write()
+        #write the state to the output folder
+        with open(os.path.join(os.getcwd(), "c3po.json"), "w+") as cf:
+            json.dump({"post_encrypt":self.multifile["post_encrypt"]}, cf, sort_keys=True, indent=4)

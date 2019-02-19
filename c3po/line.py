@@ -263,7 +263,7 @@ class Line():
              {}}}'''.format(", ".join("0x{:02x}".format(k) for k in key),
                                         ", ".join("0x{:02x}".format(i) for i in iv),
                                         ", ".join("0x{:02x}".format(v) for v in value))
-                multifile["post_encrypt"].append((key, len(value)))
+                multifile["post_encrypt"].append({"key":key,"len":len(value)})
                 self.line = """
     {{
         //[32 bytes key][16 bytes iv][encrypted bytes]
