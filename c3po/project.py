@@ -107,4 +107,4 @@ class Project():
             file.write()
         #write the state to the output folder
         with open(os.path.join(os.getcwd(), "c3po.json"), "w+") as cf:
-            json.dump({"post_encrypt":self.multifile["post_encrypt"]}, cf, sort_keys=True, indent=4)
+            json.dump({"post_encrypt":self.multifile["post_encrypt"]}, cf)

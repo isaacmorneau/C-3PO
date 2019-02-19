@@ -33,6 +33,7 @@ if __name__ == "__main__":
             statepath = sys.argv[3]
         post = PostProcess(sys.argv[2], statepath)
         post.encrypt()
+        post.write()
 
     elif sys.argv[1] == "build":
         srcfolder = sys.argv[2]
