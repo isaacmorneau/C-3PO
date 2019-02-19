@@ -145,6 +145,7 @@ class File():
 
 
             multifile["post_encrypt"].append({"key":key,"len":total_len})
+            multiline["encrypt_len"] = total_len
 
             built_struct = '''{{{},
         {},

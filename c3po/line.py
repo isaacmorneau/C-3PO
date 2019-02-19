@@ -270,9 +270,33 @@ class Line():
 """.format(token, builtdata, len(value), self.cleanline)
                 #a bit extreme but its needed so that internal functions can still mangle generated calls
                 self.cleanline = self.line.strip()
-        #for func in multifile["encrypt_functions"]:
-        #    if func in self.cleanline and not is_defdec(self.cleanline):
-        #TODO add the function decrypton code here
+        for func in multiline["encrypt_functions"]:
+            if func in self.cleanline and not is_defdec(self.cleanline):
+                if "<stdint.h>" not in multiline["includes"]:
+                    multiline["includes"].append("<stdint.h>")
+                if "<string.h>" not in multiline["includes"]:
+                    multiline["includes"].append("<string.h>")
+                if "\"c3po.h\"" not in multiline["includes"]:
+                    multiline["includes"].append("\"c3po.h\"")
+                #TODO build the function cast type so we know what the void* should be
+                #TODO track the offset for each function
+                self.line = """
+    {{
+        const uint8_t* _{0}_key = (const uint8_t*)c3po_functions_map;
+        const uint8_t* _{0}_iv = (const uint8_t*)c3po_functions_map + 32;
+        uint8_t _{0}_buf[{1}];
+        const uint8_t* _{0}_enc = (const uint8_t*)c3po_functions_map + 48;
+        memcpy(_{0}_buf, _{0}_enc, {1});
+
+        struct AES_ctx ctx;
+        AES_init_ctx_iv(&ctx, _{0}_key, _{0}_iv);
+        AES_CBC_decrypt_buffer(&ctx, _{0}_buf, {1});
+
+        //TODO verify padding
+        char* {0} = (char*)_{0}_buf;
+        {2}
+    }}
+""".format(func, multiline["encrypt_len"], self.cleanline)
 
         if "shatter_mark" in self.flags and self.flags["shatter_mark"]:
             #build a shatter section
