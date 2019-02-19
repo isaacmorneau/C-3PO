@@ -246,21 +246,25 @@ class Line():
                 multifile["post_encrypt"].append({"key":key,"len":len(value)})
                 if "<stdint.h>" not in multiline["includes"]:
                     multiline["includes"].append("<stdint.h>")
+                if "<string.h>" not in multiline["includes"]:
+                    multiline["includes"].append("<string.h>")
                 if "\"c3po.h\"" not in multiline["includes"]:
                     multiline["includes"].append("\"c3po.h\"")
                 self.line = """
     {{
-        static volatile uint8_t _{0}_data[] = {1};
-        uint8_t* _{0}_key = (uint8_t*)_{0}_data;
-        uint8_t* _{0}_iv = (uint8_t*)_{0}_data + 32;
-        uint8_t* _{0}_enc = (uint8_t*)_{0}_data + 48;
+        static volatile const uint8_t _{0}_data[] = {1};
+        const uint8_t* _{0}_key = (const uint8_t*)_{0}_data;
+        const uint8_t* _{0}_iv = (const uint8_t*)_{0}_data + 32;
+        uint8_t _{0}_buf[{2}];
+        const uint8_t* _{0}_enc = (const uint8_t*)_{0}_data + 48;
+        memcpy(_{0}_buf, _{0}_enc, {2});
 
         struct AES_ctx ctx;
         AES_init_ctx_iv(&ctx, _{0}_key, _{0}_iv);
-        AES_CBC_decrypt_buffer(&ctx, _{0}_enc, {2});
+        AES_CBC_decrypt_buffer(&ctx, _{0}_buf, {2});
 
         //TODO verify padding
-        char* {0} = (char*)_{0}_enc;
+        char* {0} = (char*)_{0}_buf;
         {3}
     }}
 """.format(token, builtdata, len(value), self.cleanline)
