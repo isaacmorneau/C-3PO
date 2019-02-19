@@ -74,7 +74,10 @@ class File():
             },
             "shuffle":[],
             "includes":[],
-            "extralines":[],
+            "prelines":[],
+            "postlines":[],
+            #[function calls to be encrypted]
+            "encrypt_functions":[],
         }
 
         #multiline single file block options
@@ -115,6 +118,36 @@ class File():
         #reset index back down
         self.multiline["asm"]["index"] = 0
 
+        if self.multiline["encrypt_functions"]:
+            key = list(bytes([random.randrange(0, 256) for i in range(32)]))
+            iv = list(bytes([random.randrange(0, 256) for i in range(16)]))
+
+            #bytes per pointer
+            x64 = 8
+            x86 = 4
+            #TODO this is assuming 64 bit pointers, allow the config of both
+            mode = x64
+            #breaks up the raw bytes into endian appropriate 32 or 64 bit chunks
+            chunked_key = ["(void*)0x"+''.join("{:02x}".format(c) for c in reversed(key[i*mode:i*mode+mode])) for i in range(int(len(key)/mode))]
+            chunked_iv = ["(void*)0x"+''.join("{:02x}".format(c) for c in reversed(iv[i*mode:i*mode+mode])) for i in range(int(len(iv)/mode))]
+            #encode how much space the function pointers will take up
+            total_len = len(key) + len(iv) + len(self.multiline["encrypt_functions"])*mode
+            multifile["post_encrypt"].append({"key":key,"len":total_len})
+
+            built_struct = '''{{{},
+        {},
+        {}}}'''.format(", ".join(chunked_key), ", ".join(chunked_iv), ", ".join(self.multiline["encrypt_functions"]))
+
+            header = '''
+static volatile void * volatile c3po_functions_map[];
+'''
+            self.multiline["prelines"].append(header)
+
+            file = '''
+static volatile void * volatile c3po_functions_map[] = {};
+'''.format(built_struct)
+            self.multiline["postlines"].append(file)
+
         for line in self.lines:
             line.resolve(self.multiline, multifile, me, you)
 
@@ -122,7 +155,9 @@ class File():
         with open(self.dstpath, "w") as f:
             for include in sorted(self.multiline["includes"]):
                 f.write("#include {}\n".format(include))
+            if self.multiline["prelines"]:
+                f.write("\n".join(self.multiline["prelines"]))
             for line in self.lines:
                 line.write(f)
-            if self.multiline["extralines"]:
-                f.write("\n".join(self.multiline["extralines"]))
+            if self.multiline["postlines"]:
+                f.write("\n".join(self.multiline["postlines"]))

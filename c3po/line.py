@@ -224,9 +224,9 @@ class Line():
                 self.flags["encrypt_mark"] = "func"
                 func = get_function_calls(self.cleanline)[0]
                 if is_defdec(self.cleanline):
-                    if func not in multifile["encrypt_functions"]:
+                    if func not in multiline["encrypt_functions"]:
                         #[string with null termination][PKCS7 padding]
-                        multifile["encrypt_functions"].append(func)
+                        multiline["encrypt_functions"].append(func)
                 else:
                     print("can only tag function declarations for encryption: '{}'".format(self.cleanline), file=sys.stderr)
             else:
