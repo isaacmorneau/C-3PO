@@ -58,7 +58,9 @@ class Project():
             #[functions to be variadically mangled]
             "mangle_variadic":[],
             #token name: [padded string bytes]
-            "encrypt":{},
+            "encrypt_strings":{},
+            #[function calls to be encrypted]
+            "encrypt_functions":[],
             #to be encrypted after the encryption
             #[(key, length)]
             "post_encrypt":[],
@@ -98,6 +100,30 @@ class Project():
             if "variadic" in opts:
                 print(" : <variadic>", end="")
             print("]")
+        return
+
+        key = list(bytes([random.randrange(0, 256) for i in range(32)]))
+        iv = list(bytes([random.randrange(0, 256) for i in range(16)]))
+
+        #bytes per pointer
+        x64 = 8
+        x86 = 4
+        #TODO this is assuming 64 bit pointers, allow the config of both
+        mode = x64
+        #breaks up the raw bytes into endian appropriate 32 or 64 bit chunks
+        chunked_key = ["(void*)0x"+''.join("{:02x}".format(c) for c in reversed(key[i*mode:i*mode+mode])) for i in range(int(len(key)/mode))]
+        chunked_iv = ["(void*)0x"+''.join("{:02x}".format(c) for c in reversed(iv[i*mode:i*mode+mode])) for i in range(int(len(iv)/mode))]
+        #encode how much space the function pointers will take up
+        total_len = len(key) + len(iv) + len(self.multifile["encrypt_functions"])*mode
+        self.multifile["post_encrypt"].append({"key":key,"len":total_len})
+
+        print(", ".join(chunked_key))
+        print(", ".join(chunked_iv))
+        #builtdata = '''{{{},
+        #     {},
+        #     {}}}'''.format("(void*)0x"+''.join("{:02x}".format(k) for i in range(int(len(key)/8)) for k in reversed(key[i*8:i*8+8])),
+        #                                ", ".join("0x{:02x}".format(i) for i in iv),
+        #                                ", ".join(self.multifile["encrypt_functions"]))
 
     #this actually writes the completed files
     def write(self):

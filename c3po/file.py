@@ -73,6 +73,7 @@ class File():
                 "indexes":[],
             },
             "shuffle":[],
+            "includes":[],
         }
 
         #multiline single file block options
@@ -118,5 +119,7 @@ class File():
 
     def write(self):
         with open(self.dstpath, "w") as f:
+            for include in sorted(self.multiline["includes"]):
+                f.write("#include {}\n".format(include))
             for line in self.lines:
                 line.write(f)

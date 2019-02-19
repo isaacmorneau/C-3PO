@@ -242,8 +242,7 @@ def is_include(line):
     return False
 
 def get_include(line):
-    if line.startswith("#include"):
-        return line[9:].strip()[1:-1]
+    return line[9:].strip()
 
 #turn directive1(opt1, opt2) directive2(opt1) into {"directive1":["opt1", "opt2"], "directive2":["opt1"]}
 def pragma_split(line):
@@ -492,7 +491,7 @@ class LexTest(unittest.TestCase):
                           ("something_longer",list("a string with escapes \" in it\0".encode())))
 
     def test_get_include(self):
-        self.assertEquals(get_include("#include \"my_include.h\""), "my_include.h")
-        self.assertEquals(get_include("#include <stdint.h>"), "stdint.h")
-        self.assertEquals(get_include("#include    <stdint.h>  "), "stdint.h")
+        self.assertEquals(get_include("#include \"my_include.h\""), "\"my_include.h\"")
+        self.assertEquals(get_include("#include <stdint.h>"), "<stdint.h>")
+        self.assertEquals(get_include("#include    <stdint.h>  "), "<stdint.h>")
 

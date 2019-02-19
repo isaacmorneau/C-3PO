@@ -1,13 +1,10 @@
-#include <stdint.h>
 #include <stdio.h>
-#include <stdarg.h>
-#include <stdbool.h>
 
 #include "c3po.h"
 #include "test.h"
 
 #pragma c3po mangle(variadic)
-const struct magic ** supercall(int j) {
+const struct magic **supercall(int j) {
     volatile int a = 0x4823;
     a *= 4;
     a <<= 2;
@@ -19,21 +16,19 @@ const struct magic ** supercall(int j) {
 //this should also be edited but not passed params
 void say_hi(const char *msg);
 
-#pragma c3po mangle(variadic)
+#pragma c3po mangle(variadic) encrypt
 void say_hi(const char *msg) {
     volatile int a = 0;
     printf("%s\n", msg);
     a++;
 }
 
-
 #pragma c3po mangle(shuffle, name)
-int scoper(int s, int v, ...)
-{
+int scoper(int s, int v, ...) {
 #pragma c3po assert(s > 0)
 #pragma c3po assert(v > 0)
     //so much
-    (void)v;/* garbage */
+    (void)v; /* garbage */
     volatile int b = s + v;
     return b;
 }
@@ -43,9 +38,16 @@ void thing(int a, int *b, char c, char *d, double e, double *f);
 
 //TODO currently unsupported
 #pragma c3po mangle(shuffle)
-void (*crazyfunc(int (a), int b, ...));
+void(*crazyfunc(int(a), int b, ...));
+
+#pragma c3po encrypt
+void testing_fp() {
+    volatile char *msg = "its indirect!";
+    puts((char *)msg);
+}
 
 int main(int argc, char **argv) {
+    (void)argv;
 #pragma c3po assert(argc > 0)
 
     c3po_zero_elf();

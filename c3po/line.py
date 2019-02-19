@@ -102,6 +102,9 @@ class Line():
 
     def classify(self, flags, multiline, multifile, lastfeed):
         feedforward = {}
+        #TODO add directive to disable all c3po processing of a set of lines
+        #otherwise double includes and stuff like itb wont function correctly
+
         #do all pragama matches first
         if is_c3po_pragma(self.cleanline):
             if "assert" in self.cleanline:
@@ -129,6 +132,11 @@ class Line():
 
                     else:
                         print("Unrecognized directive '{}'".format(directive), file=sys.stderr)
+        elif is_include(self.cleanline):
+            self.isflag = True
+            include = get_include(self.cleanline)
+            if include not in multiline["includes"]:
+                multiline["includes"].append(include)
         #copy the state we set
         self.flags = dict(flags)
 
@@ -198,12 +206,12 @@ class Line():
                 print("Unable to apply mangling to signature: '{}'".format(self.cleanline), file=sys.stderr)
         if "encrypt" in lastfeed:
             if is_string_define(self.cleanline):
-                self.flags["encrypt_mark"] = True
+                self.flags["encrypt_mark"] = "string"
 
                 token, value = get_string_define(self.cleanline)
                 if "padding" in lastfeed:
                     value.extend(0 for i in range(lastfeed["padding"]))
-                if token not in multifile["encrypt"]:
+                if token not in multifile["encrypt_strings"]:
                     #[string with null termination][PKCS7 padding]
                     padding = 16 - len(value) % 16
                     #always pad
@@ -211,12 +219,21 @@ class Line():
                         value.extend(padding for i in range(padding))
                     else:
                         value.extend(16 for i in range(16))
-                    multifile["encrypt"][token] = value
+                    multifile["encrypt_strings"][token] = value
+            elif is_function(self.cleanline):
+                self.flags["encrypt_mark"] = "func"
+                func = get_function_calls(self.cleanline)[0]
+                if is_defdec(self.cleanline):
+                    if func not in multifile["encrypt_functions"]:
+                        #[string with null termination][PKCS7 padding]
+                        multifile["encrypt_functions"].append(func)
+                else:
+                    print("can only tag function declarations for encryption: '{}'".format(self.cleanline), file=sys.stderr)
             else:
-                print("Cannot encrypt non string defines yet: '{}'".format(self.cleanline), file=sys.stderr)
+                print("Cannot encrypt requested type: '{}'".format(self.cleanline), file=sys.stderr)
 
     def resolve(self, multiline, multifile, shatterself, shatterother):
-        for token, value in multifile["encrypt"].items():
+        for token, value in multifile["encrypt_strings"].items():
             if token in self.cleanline and not is_string_define(self.cleanline):
                 #AES 256 requires 32 byte key lengths
                 key = list(bytes([random.randrange(0, 256) for i in range(32)]))
@@ -227,6 +244,10 @@ class Line():
                                         ", ".join("0x{:02x}".format(i) for i in iv),
                                         ", ".join("0x{:02x}".format(v) for v in value))
                 multifile["post_encrypt"].append({"key":key,"len":len(value)})
+                if "<stdint.h>" not in multiline["includes"]:
+                    multiline["includes"].append("<stdint.h>")
+                if "\"c3po.h\"" not in multiline["includes"]:
+                    multiline["includes"].append("\"c3po.h\"")
                 self.line = """
     {{
         static volatile uint8_t _{0}_data[] = {1};
@@ -245,6 +266,9 @@ class Line():
 """.format(token, builtdata, len(value), self.cleanline)
                 #a bit extreme but its needed so that internal functions can still mangle generated calls
                 self.cleanline = self.line.strip()
+        #for func in multifile["encrypt_functions"]:
+        #    if func in self.cleanline and not is_defdec(self.cleanline):
+        #TODO add the function decrypton code here
 
         if "shatter_mark" in self.flags and self.flags["shatter_mark"]:
             #build a shatter section
@@ -256,6 +280,8 @@ class Line():
         if "assert_mark" in self.flags:
             args = ", ".join(get_function_arguments("assert", self.cleanline))
 
+            if "<stdbool.h>" not in multiline["includes"]:
+                multiline["includes"].append("<stdbool.h>")
             self.line = '''    {{
         volatile bool assert_check =!({});
         if (assert_check) {{'''.format(args)
@@ -265,14 +291,19 @@ class Line():
             self.line += "\n        }\n    }"
 
         if "encrypt_mark" in self.flags:
-            self.line = "//the following constant is included encrypted inline\n//"+self.cleanline
+            if self.flags["encrypt_mark"] == "string":
+                self.line = "//the following constant is included encrypted inline\n//"+self.cleanline
+            #dont comment out function definitions
         #shuffle params first
         for key, value in multifile["mangle_params"].items():
             if key in self.cleanline:
                 self.line = reorder_arguments(key, value, self.line)
         for func in multifile["mangle_variadic"]:
             if func in self.cleanline:
-                arguments = get_function_arguments(func, self.cleanline)
+                try:
+                    arguments = get_function_arguments(func, self.cleanline)
+                except Exception:
+                    continue
 
                 if len(arguments) == 0:
                     #you need at least one named param so ensure there is one
@@ -292,6 +323,8 @@ class Line():
                     #quick break to select the name
                     argument_names = get_token_names(arguments)
                     finalnamed = argument_names[-1].split()[-1]
+                    if "<stdarg.h>" not in multiline["includes"]:
+                        multiline["includes"].append("<stdarg.h>")
                     self.line += """
     va_list va;
     va_start(va, {});
