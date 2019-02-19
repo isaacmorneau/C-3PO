@@ -74,6 +74,7 @@ class File():
             },
             "shuffle":[],
             "includes":[],
+            "extralines":[],
         }
 
         #multiline single file block options
@@ -123,3 +124,5 @@ class File():
                 f.write("#include {}\n".format(include))
             for line in self.lines:
                 line.write(f)
+            if self.multiline["extralines"]:
+                f.write("\n".join(self.multiline["extralines"]))

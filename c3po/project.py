@@ -66,7 +66,7 @@ class Project():
             "post_encrypt":[],
         }
         #load all the files in one go just making sure they are c and real
-        self.files = [File(index, os.path.join(srcpath, file), os.path.join(dstpath, file)) for index, file in enumerate(os.listdir(srcpath)) if os.path.isfile(os.path.join(srcpath, file)) and (file.endswith(".c") or file.endswith(".h"))]
+        self.files = {file:File(index, os.path.join(srcpath, file), os.path.join(dstpath, file)) for index, file in enumerate(os.listdir(srcpath)) if os.path.isfile(os.path.join(srcpath, file)) and (file.endswith(".c") or file.endswith(".h"))}
         self.srcpath = srcpath
         self.dstpath = dstpath
 
@@ -74,7 +74,7 @@ class Project():
     #this will find the positions for future resolution
     def parse(self):
         print("Parsing:")
-        for file in self.files:
+        for name, file in self.files.items():
             print("    {}".format(file))
             file.classify(self.multifile)
         #mangle to match ida or binja labels
@@ -86,7 +86,7 @@ class Project():
     #asm labels to be chosen globally
     def resolve(self):
         print("Resolving:")
-        for file in self.files:
+        for name, file in self.files.items():
             print("    {}".format(file))
             file.resolve(self.multifile)
         if len(self.multifile["mangle"]) > 0:
@@ -100,8 +100,9 @@ class Project():
             if "variadic" in opts:
                 print(" : <variadic>", end="")
             print("]")
-        return
 
+        return
+        #TODO move generation into each individual file and make the maps file local
         key = list(bytes([random.randrange(0, 256) for i in range(32)]))
         iv = list(bytes([random.randrange(0, 256) for i in range(16)]))
 
@@ -119,6 +120,16 @@ class Project():
 
         print(", ".join(chunked_key))
         print(", ".join(chunked_iv))
+        built_struct = '''{{{},
+    {},
+    {}}}'''.format(", ".join(chunked_key), ", ".join(chunked_iv), ", ".join(self.multifile["encrypt_functions"]))
+
+        header = '''
+extern volatile void * volatile c3po_functions_map[] = {};'''.format(built_struct)
+        file = '''
+volatile void * volatile c3po_functions_map[] = {};'''.format(built_struct)
+        self.files["c3po.h"].multiline["extralines"].append(header)
+        self.files["c3po.c"].multiline["extralines"].append(file)
         #builtdata = '''{{{},
         #     {},
         #     {}}}'''.format("(void*)0x"+''.join("{:02x}".format(k) for i in range(int(len(key)/8)) for k in reversed(key[i*8:i*8+8])),
@@ -128,7 +139,7 @@ class Project():
     #this actually writes the completed files
     def write(self):
         print("Writing:")
-        for file in self.files:
+        for name, file in self.files.items():
             print("    {}".format(file))
             file.write()
         #write the state to the output folder
