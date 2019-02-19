@@ -52,9 +52,23 @@ int main(int argc, char **argv) {
 
     scoper(scoper(1, scoper(2, 3, 'c'), 'b', 'c', 'd'), 4, 'a', "hahaha");
 
-    say_hi("testing variadic");
-    say_hi("with multiple");
-    say_hi("calls");
+#pragma c3po encrypt
+#define tv1 "testing variadic"
+#pragma c3po encrypt
+#define tv2 "with multiple"
+#pragma c3po encrypt
+#define tv3 "calls"
+
+    say_hi(tv1);
+    say_hi(tv2);
+    say_hi(tv3);
+
+#pragma c3po encrypt
+#define TESTING "testing stuff"
+
+    printf("does this explode '%s'\n", TESTING);
+
+    printf("does _this_ explode '%s'\n", TESTING);
 
 #pragma c3po shatter(call, high, on)
     int i = 0;
@@ -80,6 +94,10 @@ int main(int argc, char **argv) {
 
     i *= 345;
     puts("2");
+
+#pragma c3po case
+
+    printf("decoded '%s' and '%s'\n", BSTR, CSTR);
 
 #pragma c3po case
 

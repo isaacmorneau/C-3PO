@@ -198,10 +198,11 @@ class Line():
                 print("Unable to apply mangling to signature: '{}'".format(self.cleanline), file=sys.stderr)
         if "encrypt" in lastfeed:
             if is_string_define(self.cleanline):
+                self.flags["encrypt_mark"] = True
+
                 token, value = get_string_define(self.cleanline)
                 if "padding" in lastfeed:
                     value.extend(0 for i in range(lastfeed["padding"]))
-                self.flags["encrypt_mark"] = True
                 if token not in multifile["encrypt"]:
                     #[string with null termination][PKCS7 padding]
                     padding = 16 - len(value) % 16
@@ -209,7 +210,7 @@ class Line():
                     if padding > 0:
                         value.extend(padding for i in range(padding))
                     else:
-                        value.extend(16 for i in range(padding))
+                        value.extend(16 for i in range(16))
                     multifile["encrypt"][token] = value
             else:
                 print("Cannot encrypt non string defines yet: '{}'".format(self.cleanline), file=sys.stderr)
@@ -228,8 +229,7 @@ class Line():
                 multifile["post_encrypt"].append({"key":key,"len":len(value)})
                 self.line = """
     {{
-        //[32 bytes key][16 bytes iv][encrypted bytes]
-        volatile uint8_t _{0}_data[] = {1};
+        static volatile uint8_t _{0}_data[] = {1};
         uint8_t* _{0}_key = (uint8_t*)_{0}_data;
         uint8_t* _{0}_iv = (uint8_t*)_{0}_data + 32;
         uint8_t* _{0}_enc = (uint8_t*)_{0}_data + 48;

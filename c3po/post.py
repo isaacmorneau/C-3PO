@@ -2,6 +2,8 @@ import os
 import json
 from Crypto.Cipher import AES
 
+#TODO unit test this
+
 class PostProcess():
     def __init__(self, binarypath, statepath):
         self.binarypath = binarypath
@@ -16,9 +18,9 @@ class PostProcess():
     def encrypt(self):
         pe = self.state["post_encrypt"]
         keys = [{"key":batch["key"], "len":batch["len"]} for batch in pe]
-        print("Searching for {} keys:".format(len(keys)))
+        print("Finding {} keys:".format(len(keys)))
         for i, batch in enumerate(keys):
-            print("    {}:{}".format(i,''.join("{:02x}".format(k) for k in batch["key"])))
+            print("    "+''.join("{:02x}".format(k) for k in batch["key"]))
 
         keystocheck = [i for i in range(len(keys))]
         for i,d in enumerate(self.data):
@@ -26,7 +28,7 @@ class PostProcess():
                 #if the first byte matches check the rest
                 #i could implement a string matching algorithm or i could not
                 if d == keys[k]["key"][0] and self.data[i:i+32] == keys[k]["key"]:
-                    print("    found {} at offset {}".format(k, i))
+                    #print("    found {} at offset {}".format(k, i))
                     keys[k]["offset"] = i
                     #found dont check for it again
                     keystocheck.remove(k)
@@ -56,12 +58,9 @@ class PostProcess():
             cipher = AES.new(bytes(key_data), AES.MODE_CBC, bytes(iv_data))
             enc_data = list(cipher.encrypt(bytes(raw_data)))
 
-            print("    key {}".format(''.join("{:02x}".format(k) for k in key_data)))
-            print("    iv  {}".format(''.join("{:02x}".format(k) for k in iv_data)))
-            print("    raw {}".format(''.join("{:02x}".format(k) for k in raw_data)))
-            print("    enc {}".format(''.join("{:02x}".format(k) for k in enc_data)))
+            print("  {}{}".format(''.join("{:02x}".format(k) for k in raw_data[:32]),
+                                  "" if len(raw_data) <= 32 else "...{} bytes more".format(len(raw_data)-32)))
 
             #overwrite the raw data with the encrypted version
             self.data[enc_start:enc_end] = enc_data
-            print("")
 
