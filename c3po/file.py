@@ -122,7 +122,7 @@ class File():
         self.multiline["asm"]["index"] = 0
 
         #TODO enable this
-        if False and len(self.multiline["encrypt_functions"]):
+        if self.multiline["encrypt_functions"]:
             key = list(bytes([random.randrange(0, 256) for i in range(32)]))
             iv = list(bytes([random.randrange(0, 256) for i in range(16)]))
 
@@ -162,7 +162,7 @@ class File():
             header = '''
 static volatile void * volatile c3po_functions_map[];
 '''
-            self.multiline["prelines"].append(header)
+            self.prelines.append(header)
 
             file = '''
 static volatile void * volatile c3po_functions_map[] = {};

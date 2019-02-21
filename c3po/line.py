@@ -228,9 +228,8 @@ class Line():
                 func = get_function_calls(self.cleanline)[0]
                 if is_defdec(self.cleanline):
                     #[string with null termination][PKCS7 padding]
-                    #TODO make this a real cast
                     #TODO deduplicate
-                    multiline["encrypt_functions"].append({"func":func, "cast":"(void (*)())"})
+                    multiline["encrypt_functions"].append({"func":func})
                 else:
                     print("can only tag function declarations for encryption: '{}'".format(self.cleanline), file=sys.stderr)
             else:
@@ -271,6 +270,40 @@ class Line():
         //TODO verify padding
         char* {0} = (char*)_{0}_buf;
 """.format(token, builtdata, len(value)).split("\n"))
+                self.postlines.append("    }")
+
+
+
+
+        for index, chunk in enumerate(multiline["encrypt_functions"]):
+            func = chunk["func"]
+            args = get_function_arguments(func, self.cleanline);
+            length = multiline["encrypt_len"]
+            if func in self.cleanline and not is_defdec(self.cleanline):
+                #AES 256 requires 32 byte key lengths
+                if "<stdint.h>" not in multiline["includes"]:
+                    multiline["includes"].append("<stdint.h>")
+                if "<string.h>" not in multiline["includes"]:
+                    multiline["includes"].append("<string.h>")
+                if "\"c3po.h\"" not in multiline["includes"]:
+                    multiline["includes"].append("\"c3po.h\"")
+                self.prelines.extend("""
+    {{
+        const uint8_t* _{0}_key = (const uint8_t*)c3po_functions_map;
+        const uint8_t* _{0}_iv = (const uint8_t*)c3po_functions_map + 32;
+        uint8_t _{0}_buf[{1}];
+        const uint8_t* _{0}_enc = (const uint8_t*)c3po_functions_map + 48;
+        memcpy(_{0}_buf, _{0}_enc, {1});
+
+        struct aes_ctx ctx;
+        aes_init_ctx_iv(&ctx, _{0}_key, _{0}_iv);
+        aes_cbc_decrypt_buffer(&ctx, _{0}_buf, {1});
+
+        //TODO verify padding
+        ((__typeof__(&{3}))((char*)_{0}_buf+{2}))({4});
+""".format(func, length, index, func, ", ".join(args)).split("\n"))
+                self.line = ""
+                self.cleanline = ""
                 self.postlines.append("    }")
 
 
@@ -359,8 +392,12 @@ class Line():
                     self.cleanline = self.line.strip()
 
             for index, line in enumerate(self.prelines):
+                #the get function calls to make sure its not generated code
                 if func in line:
-                    print("{} in {}".format(func, line))
+                    calls = get_function_calls(self.cleanline)
+                    if not calls or func not in calls:
+                        continue
+
                     try:
                         arguments = get_function_arguments(func, line)
                     except Exception:
@@ -394,7 +431,6 @@ class Line():
                         additional_args = [str(random.randrange(0, 65535)) for i in range(random.randrange(1, 10))]
                         line = append_arguments(func, additional_args, line)
 
-                    print("overwriting '{}' with '{}'".format(self.prelines[index], line))
                     self.prelines[index] = line
 
 
