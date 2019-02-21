@@ -364,6 +364,26 @@ def is_return(line):
 def is_variadic(args):
     return args and args[-1] == "..."
 
+def generate_cast(line):
+    parts = []
+    token = ""
+    cleaned = line.replace(";",'').replace("{",'').strip()
+    for char in cleanend:
+        pass
+    remwords = [word.split()[-1] for word in cleaned.split("(")[:-1]]
+    for index,word in enumerate(remwords):
+        if index != 0:
+            if remwords[index-1][-1] != " ":
+                cleaned = cleaned.replace(word,'(*)')
+        else:
+            cleaned = cleaned.replace(word,'(*)')
+    remwords = [''.join(c for c in word.split()[-1] if c in string.ascii_letters or c in "_1234567890") for word in cleaned.split(",")]
+    for word in remwords:
+        cleaned = cleaned.replace(word,'')
+    return "(" + cleaned + ")"
+
+
+
 class LexTest(unittest.TestCase):
     #TODO none of the current parsers respect string literals containing the code they are expecting
     def test_pragma_split(self):
@@ -413,6 +433,7 @@ class LexTest(unittest.TestCase):
         self.assertEquals(get_function_calls("foo(bar(baz(1)), bar(baz(1)))"), ["foo", "bar", "baz", "bar", "baz"])
         self.assertEquals(get_function_calls("while (foo(bar(baz(1))) || foo(bar())) {"), ["foo", "bar", "baz", "foo", "bar"])
         self.assertEquals(get_function_calls("void say_hi(const char *msg) {"), ["say_hi"])
+        self.assertEquals(get_function_calls("void (*crazyfunc(int (a), int b, ...));"), ["crazyfunc"])
 
     def test_reorder_arguments(self):
         self.assertEquals(reorder_arguments("foo", [2, 1, 0], "foo(a, b, c);"), "foo(c, b, a);"),
@@ -476,6 +497,7 @@ class LexTest(unittest.TestCase):
         self.assertEquals(get_token_names(["int (*a)"]), ["a"])
         self.assertEquals(get_token_names(["(*a)"]), ["a"])
         self.assertEquals(get_token_names(["(void *)a"]), ["a"])
+        self.assertEquals(get_token_names(["int (*a)", "char str[]"]), ["a", "str"])
 
     def test_is_string_define(self):
         self.assertTrue(is_string_define("#define A \"string\""))
@@ -495,3 +517,7 @@ class LexTest(unittest.TestCase):
         self.assertEquals(get_include("#include <stdint.h>"), "<stdint.h>")
         self.assertEquals(get_include("#include    <stdint.h>  "), "<stdint.h>")
 
+    def test_generate_cast(self):
+        self.assertEquals(generate_cast("void foo();"), "(void (*)())")
+        self.assertEquals(generate_cast("const struct bar* foo(struct bar baz[]);"), "(const struct bar* (*)(struct bar *))")
+        self.assertEquals(generate_cast("void (*crazyfunc(int (a), int b, ...)){"), "(void (*)(int a, int, ...))")

@@ -96,6 +96,8 @@ class Line():
         #this is a flag of some kind, it should not be output
         self.isflag = False
         self.index = index
+        self.prelines = []
+        self.postlines = []
 
     def __str__(self):
         return "{}:{}:{}".format(self.index, self.flags.items(), self.cleanline)
@@ -145,6 +147,7 @@ class Line():
         if not self.isflag:
             self.flagless_line(lastfeed, multiline, multifile)
         return feedforward
+
 
     def flagless_line(self, lastfeed, multiline, multifile):
         if self.flags["shuffle"]:
@@ -224,13 +227,15 @@ class Line():
                 self.flags["encrypt_mark"] = "func"
                 func = get_function_calls(self.cleanline)[0]
                 if is_defdec(self.cleanline):
-                    if func not in multiline["encrypt_functions"]:
-                        #[string with null termination][PKCS7 padding]
-                        multiline["encrypt_functions"].append(func)
+                    #[string with null termination][PKCS7 padding]
+                    #TODO make this a real cast
+                    #TODO deduplicate
+                    multiline["encrypt_functions"].append({"func":func, "cast":"(void (*)())"})
                 else:
                     print("can only tag function declarations for encryption: '{}'".format(self.cleanline), file=sys.stderr)
             else:
                 print("Cannot encrypt requested type: '{}'".format(self.cleanline), file=sys.stderr)
+
 
     def resolve(self, multiline, multifile, shatterself, shatterother):
         for token, value in multifile["encrypt_strings"].items():
@@ -250,7 +255,7 @@ class Line():
                     multiline["includes"].append("<string.h>")
                 if "\"c3po.h\"" not in multiline["includes"]:
                     multiline["includes"].append("\"c3po.h\"")
-                self.line = """
+                self.prelines.extend("""
     {{
         static volatile const uint8_t _{0}_data[] = {1};
         const uint8_t* _{0}_key = (const uint8_t*)_{0}_data;
@@ -259,73 +264,60 @@ class Line():
         const uint8_t* _{0}_enc = (const uint8_t*)_{0}_data + 48;
         memcpy(_{0}_buf, _{0}_enc, {2});
 
-        struct AES_ctx ctx;
-        AES_init_ctx_iv(&ctx, _{0}_key, _{0}_iv);
-        AES_CBC_decrypt_buffer(&ctx, _{0}_buf, {2});
+        struct aes_ctx ctx;
+        aes_init_ctx_iv(&ctx, _{0}_key, _{0}_iv);
+        aes_cbc_decrypt_buffer(&ctx, _{0}_buf, {2});
 
         //TODO verify padding
         char* {0} = (char*)_{0}_buf;
-        {3}
-    }}
-""".format(token, builtdata, len(value), self.cleanline)
-                #a bit extreme but its needed so that internal functions can still mangle generated calls
-                self.cleanline = self.line.strip()
-        for func in multiline["encrypt_functions"]:
-            if func in self.cleanline and not is_defdec(self.cleanline):
-                if "<stdint.h>" not in multiline["includes"]:
-                    multiline["includes"].append("<stdint.h>")
-                if "<string.h>" not in multiline["includes"]:
-                    multiline["includes"].append("<string.h>")
-                if "\"c3po.h\"" not in multiline["includes"]:
-                    multiline["includes"].append("\"c3po.h\"")
-                #TODO build the function cast type so we know what the void* should be
-                #TODO track the offset for each function
-                self.line = """
-    {{
-        const uint8_t* _{0}_key = (const uint8_t*)c3po_functions_map;
-        const uint8_t* _{0}_iv = (const uint8_t*)c3po_functions_map + 32;
-        uint8_t _{0}_buf[{1}];
-        const uint8_t* _{0}_enc = (const uint8_t*)c3po_functions_map + 48;
-        memcpy(_{0}_buf, _{0}_enc, {1});
+""".format(token, builtdata, len(value)).split("\n"))
+                self.postlines.append("    }")
 
-        struct AES_ctx ctx;
-        AES_init_ctx_iv(&ctx, _{0}_key, _{0}_iv);
-        AES_CBC_decrypt_buffer(&ctx, _{0}_buf, {1});
 
-        //TODO verify padding
-        char* {0} = (char*)_{0}_buf;
-        {2}
-    }}
-""".format(func, multiline["encrypt_len"], self.cleanline)
 
         if "shatter_mark" in self.flags and self.flags["shatter_mark"]:
             #build a shatter section
-            self.line += asmlbljmp.format(shatterself[multiline["asm"]["index"]],
+            self.postlines.append (asmlbljmp.format(shatterself[multiline["asm"]["index"]],
                                           shatterother[multiline["asm"]["index"]],
-                                          self.flags["shatter_type"])
+                                          self.flags["shatter_type"]))
             multiline["asm"]["index"] += 1
+
+
 
         if "assert_mark" in self.flags:
             args = ", ".join(get_function_arguments("assert", self.cleanline))
 
             if "<stdbool.h>" not in multiline["includes"]:
                 multiline["includes"].append("<stdbool.h>")
-            self.line = '''    {{
+            #wipe out both lines for checks as the line is totally replaced
+            self.line = ""
+            self.cleanline = ""
+            self.postlines.extend('''    {{
         volatile bool assert_check =!({});
-        if (assert_check) {{'''.format(args)
+        if (assert_check) {{'''.format(args).split("\n"))
 
-            #TODO collect any asm nasties to troll the disassembler in here
-            self.line += broken_bytes()
-            self.line += "\n        }\n    }"
+            #TODO collect any additional asm nasties to troll the disassembler in here
+            #possibly target it with shatter jumps to make the disassembler evaluate it multiple times
+            self.postlines.extend(broken_bytes().split("\n"))
+            self.postlines.extend(["        }","    }"])
+
+
 
         if "encrypt_mark" in self.flags:
             if self.flags["encrypt_mark"] == "string":
-                self.line = "//the following constant is included encrypted inline\n//"+self.cleanline
+                self.prelines.append("/*the following is included encrypted inline")
+                self.postlines.append("*/")
             #dont comment out function definitions
+
+
         #shuffle params first
         for key, value in multifile["mangle_params"].items():
             if key in self.cleanline:
                 self.line = reorder_arguments(key, value, self.line)
+                self.cleanline = self.line.strip()
+
+
+
         for func in multifile["mangle_variadic"]:
             if func in self.cleanline:
                 try:
@@ -337,40 +329,93 @@ class Line():
                     #you need at least one named param so ensure there is one
                     if is_defdec(self.cleanline):
                         self.line = append_arguments(func, ["int base"], self.line)
-                        self.cleanline = append_arguments(func, ["int base"], self.cleanline)
+                        self.cleanline = self.line.strip()
                         arguments.append("int base")
                     else:
                         self.line = append_arguments(func, ["0"], self.line)
-                        self.cleanline = append_arguments(func, ["0"], self.cleanline)
+                        self.cleanline = self.line.strip()
                         arguments.append("0")
 
                 if is_defdec(self.cleanline, [";"]):
                     self.line = append_arguments(func, ["..."], self.line)
+                    self.cleanline = self.line.strip()
                 elif is_defdec(self.cleanline,["{"]):
                     self.line = append_arguments(func, ["..."], self.line)
+                    self.cleanline = self.line.strip()
                     #quick break to select the name
                     argument_names = get_token_names(arguments)
                     finalnamed = argument_names[-1].split()[-1]
                     if "<stdarg.h>" not in multiline["includes"]:
                         multiline["includes"].append("<stdarg.h>")
-                    self.line += """
+                    self.postlines.extend("""
     va_list va;
     va_start(va, {});
     va_end(va);
-""".format(finalnamed)
+""".format(finalnamed).split("\n"))
                 else:
                     #TODO allow randomization to be configurable
                     additional_args = [str(random.randrange(0, 65535)) for i in range(random.randrange(1, 10))]
                     self.line = append_arguments(func, additional_args, self.line)
+                    self.cleanline = self.line.strip()
+
+            for index, line in enumerate(self.prelines):
+                if func in line:
+                    print("{} in {}".format(func, line))
+                    try:
+                        arguments = get_function_arguments(func, line)
+                    except Exception:
+                        continue
+
+                    if len(arguments) == 0:
+                        #you need at least one named param so ensure there is one
+                        if is_defdec(line):
+                            line = append_arguments(func, ["int base"], line)
+                            arguments.append("int base")
+                        else:
+                            line = append_arguments(func, ["0"], line)
+                            arguments.append("0")
+
+                    if is_defdec(line, [";"]):
+                        line = append_arguments(func, ["..."], line)
+                    elif is_defdec(line,["{"]):
+                        line = append_arguments(func, ["..."], line)
+                        #quick break to select the name
+                        argument_names = get_token_names(arguments)
+                        finalnamed = argument_names[-1].split()[-1]
+                        if "<stdarg.h>" not in multiline["includes"]:
+                            multiline["includes"].append("<stdarg.h>")
+                        self.postlines.extend("""
+    va_list va;
+    va_start(va, {});
+    va_end(va);
+""".format(finalnamed).split("\n"))
+                    else:
+                        #TODO allow randomization to be configurable
+                        additional_args = [str(random.randrange(0, 65535)) for i in range(random.randrange(1, 10))]
+                        line = append_arguments(func, additional_args, line)
+
+                    print("overwriting '{}' with '{}'".format(self.prelines[index], line))
+                    self.prelines[index] = line
+
+
+
         #name mangling should happen after as generated code from previous resolution may need to be mangled
         #break all the names
         for key, value in multifile["mangle_match"].items():
             if key in self.cleanline:
                 self.line = self.line.replace(key, value)
                 self.cleanline = self.cleanline.replace(key, value)
+            self.prelines = [line.replace(key, value) for line in self.prelines]
+            self.postlines = [line.replace(key, value) for line in self.postlines]
+
+
 
     def write(self, file):
         if self.isflag:
             return
         else:
+            if self.prelines:
+                file.write("\n".join(self.prelines))
             file.write(self.line+"\n")
+            if self.postlines:
+                file.write("\n".join(self.postlines))

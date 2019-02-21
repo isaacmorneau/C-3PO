@@ -74,11 +74,14 @@ class File():
             },
             "shuffle":[],
             "includes":[],
-            "prelines":[],
-            "postlines":[],
             #[function calls to be encrypted]
             "encrypt_functions":[],
+            "encrypt_len":0,
         }
+
+        #for additional out of line data
+        self.prelines = []
+        self.postlines = []
 
         #multiline single file block options
         self.flags = {
@@ -118,7 +121,8 @@ class File():
         #reset index back down
         self.multiline["asm"]["index"] = 0
 
-        if self.multiline["encrypt_functions"]:
+        #TODO enable this
+        if False and len(self.multiline["encrypt_functions"]):
             key = list(bytes([random.randrange(0, 256) for i in range(32)]))
             iv = list(bytes([random.randrange(0, 256) for i in range(16)]))
 
@@ -145,14 +149,14 @@ class File():
 
 
             multifile["post_encrypt"].append({"key":key,"len":total_len})
-            multiline["encrypt_len"] = total_len
+            self.multiline["encrypt_len"] = total_len
 
             built_struct = '''{{{},
         {},
         {},
         {}}}'''.format(", ".join(chunked_key),
                        ", ".join(chunked_iv),
-                       ", ".join(self.multiline["encrypt_functions"]),
+                       ", ".join(chunk["func"] for chunk in self.multiline["encrypt_functions"]),
                        ", ".join(chunked_pkc))
 
             header = '''
@@ -163,7 +167,7 @@ static volatile void * volatile c3po_functions_map[];
             file = '''
 static volatile void * volatile c3po_functions_map[] = {};
 '''.format(built_struct)
-            self.multiline["postlines"].append(file)
+            self.postlines.append(file)
 
         for line in self.lines:
             line.resolve(self.multiline, multifile, me, you)
@@ -172,9 +176,9 @@ static volatile void * volatile c3po_functions_map[] = {};
         with open(self.dstpath, "w") as f:
             for include in sorted(self.multiline["includes"]):
                 f.write("#include {}\n".format(include))
-            if self.multiline["prelines"]:
-                f.write("\n".join(self.multiline["prelines"]))
+            if self.prelines:
+                f.write("\n".join(self.prelines))
             for line in self.lines:
                 line.write(f)
-            if self.multiline["postlines"]:
-                f.write("\n".join(self.multiline["postlines"]))
+            if self.postlines:
+                f.write("\n".join(self.postlines))
