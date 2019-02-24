@@ -56,10 +56,20 @@ class PostProcess():
             enc_end = enc_start + batch["len"]
             raw_data = self.data[enc_start:enc_end]
 
+            #make sure the binary generated correctly
+            padding_len = raw_data[-1]
+            for p in range(1, padding_len + 1):
+                if raw_data[p*-1] != padding_len:
+                    print("PKC7 padding verification failed")
+                    print(''.join(raw_data))
+                    print("abborting")
+                    sys.exit(1)
+            print("PKC7 passed ", end='')
+
             cipher = AES.new(bytes(key_data), AES.MODE_CBC, bytes(iv_data))
             enc_data = list(cipher.encrypt(bytes(raw_data)))
 
-            print("    {}{}".format(''.join("{:02x}".format(k) for k in raw_data[:32]),
+            print("{}{}".format(''.join("{:02x}".format(k) for k in raw_data[:32]),
                                   "" if len(raw_data) <= 32 else "...{} bytes more".format(len(raw_data)-32)))
 
             #overwrite the raw data with the encrypted version

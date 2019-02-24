@@ -135,7 +135,7 @@ class File():
             chunked_key = ["(void*)0x"+''.join("{:02x}".format(c) for c in reversed(key[i*mode:i*mode+mode])) for i in range(int(len(key)/mode))]
             chunked_iv = ["(void*)0x"+''.join("{:02x}".format(c) for c in reversed(iv[i*mode:i*mode+mode])) for i in range(int(len(iv)/mode))]
             #encode how much space the function pointers will take up
-            total_len = len(key) + len(iv) + len(self.multiline["encrypt_functions"])*mode
+            total_len = len(self.multiline["encrypt_functions"]) * mode
             padding = 16 - total_len % 16
             pkc = None
             #always pad

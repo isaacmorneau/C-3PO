@@ -300,7 +300,8 @@ class Line():
         aes_cbc_decrypt_buffer(&ctx, _{0}_buf, {1});
 
         //TODO verify padding
-        ((__typeof__(&{3}))((char*)_{0}_buf+{2}))({4});
+        volatile __typeof__(&{3}) _{0}_func = ((__typeof__(&{3}))((char*)_{0}_buf+{2}));
+        _{0}_func({4});
 """.format(func, length, index, func, ", ".join(args)).split("\n"))
                 self.line = ""
                 self.cleanline = ""
@@ -338,8 +339,8 @@ class Line():
 
         if "encrypt_mark" in self.flags:
             if self.flags["encrypt_mark"] == "string":
-                self.prelines.append("/*the following is included encrypted inline")
-                self.postlines.append("*/")
+                self.line = ""
+                self.cleanline = ""
             #dont comment out function definitions
 
 

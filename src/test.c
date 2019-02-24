@@ -16,7 +16,7 @@ const struct magic **supercall(int j) {
 //this should also be edited but not passed params
 void say_hi(const char *msg);
 
-#pragma c3po mangle(variadic) encrypt
+#pragma c3po mangle(variadic)
 void say_hi(const char *msg) {
     volatile int a = 0;
     printf("%s\n", msg);
@@ -48,6 +48,8 @@ void testing_fp() {
 
 int main(int argc, char **argv) {
     (void)argv;
+    testing_fp();
+
 #pragma c3po assert(argc > 0)
 
     c3po_zero_elf();
