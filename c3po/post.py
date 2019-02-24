@@ -60,11 +60,11 @@ class PostProcess():
             padding_len = raw_data[-1]
             for p in range(1, padding_len + 1):
                 if raw_data[p*-1] != padding_len:
-                    print("PKC7 padding verification failed")
+                    print("PKCS7 padding verification failed")
                     print(''.join(raw_data))
                     print("abborting")
                     sys.exit(1)
-            print("PKC7 passed ", end='')
+            print("PKCS7 passed ", end='')
 
             cipher = AES.new(bytes(key_data), AES.MODE_CBC, bytes(iv_data))
             enc_data = list(cipher.encrypt(bytes(raw_data)))
