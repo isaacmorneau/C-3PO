@@ -74,8 +74,6 @@ class File():
             },
             "shuffle":[],
             "includes":[],
-            #[function calls to be encrypted]
-            "encrypt_functions":[],
             "encrypt_len":0,
         }
 
@@ -120,54 +118,6 @@ class File():
 
         #reset index back down
         self.multiline["asm"]["index"] = 0
-
-        #TODO enable this
-        if self.multiline["encrypt_functions"]:
-            key = list(bytes([random.randrange(0, 256) for i in range(32)]))
-            iv = list(bytes([random.randrange(0, 256) for i in range(16)]))
-
-            #bytes per pointer
-            x64 = 8
-            x86 = 4
-            #TODO this is assuming 64 bit pointers, allow the config of both
-            mode = x64
-            #breaks up the raw bytes into endian appropriate 32 or 64 bit chunks
-            chunked_key = ["(void*)0x"+''.join("{:02x}".format(c) for c in reversed(key[i*mode:i*mode+mode])) for i in range(int(len(key)/mode))]
-            chunked_iv = ["(void*)0x"+''.join("{:02x}".format(c) for c in reversed(iv[i*mode:i*mode+mode])) for i in range(int(len(iv)/mode))]
-            #encode how much space the function pointers will take up
-            total_len = len(self.multiline["encrypt_functions"]) * mode
-            padding = 16 - total_len % 16
-            pkc = None
-            #always pad
-            if padding > 0:
-                pkc = [padding for i in range(padding)]
-                total_len += padding
-            else:
-                pkc = [16 for i in range(16)]
-                total_len += 16
-            chunked_pkc = ["(void*)0x"+''.join("{:02x}".format(c) for c in reversed(pkc[i*mode:i*mode+mode])) for i in range(int(len(pkc)/mode))]
-
-
-            multifile["post_encrypt"].append({"key":key,"len":total_len})
-            self.multiline["encrypt_len"] = total_len
-
-            built_struct = '''{{{},
-        {},
-        {},
-        {}}}'''.format(", ".join(chunked_key),
-                       ", ".join(chunked_iv),
-                       ", ".join(chunk["func"] for chunk in self.multiline["encrypt_functions"]),
-                       ", ".join(chunked_pkc))
-
-            header = '''
-static volatile void * volatile c3po_functions_map[];
-'''
-            self.prelines.append(header)
-
-            file = '''
-static volatile void * volatile c3po_functions_map[] = {};
-'''.format(built_struct)
-            self.postlines.append(file)
 
         for line in self.lines:
             line.resolve(self.multiline, multifile, me, you)

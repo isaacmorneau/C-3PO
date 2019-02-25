@@ -3,6 +3,7 @@
 
 import sys
 import os
+import argparse
 from c3po.project import Project
 from c3po.lex import LexTest
 from c3po.file import FileTest
@@ -10,41 +11,62 @@ from c3po.post import PostProcess
 import unittest
 
 if __name__ == "__main__":
-    def print_help():
-        print("usage: ./c3po.py build /path/to/src /path/to/output <optional seed>")
-        print("       ./c3po.py post /path/to/binary <optional state json path>")
-        print("       ./c3po.py test")
-        sys.exit(1)
-    if len(sys.argv) == 1:
-        print_help()
-    elif sys.argv[1] == "test":
+    parser = argparse.ArgumentParser(description="C3PO - C PrePreProcessor Obfuscator")
+    parser.add_argument("type", help="select the operational mode", choices=['build','post','test'])
+    parser.add_argument("-s","--source", help="build, post: the path to the folder to parse from", nargs=1)
+    parser.add_argument("-o","--output", help="build only: the path to the folder to output to", nargs=1)
+    parser.add_argument("--json", help="post only: path to the json state", nargs=1)
+    parser.add_argument("--seed", help="build only: random seed", nargs=1)
+
+    args = parser.parse_args()
+
+    if args.json and args.type != 'post':
+        parser.error("--json option is only for post mode")
+    if args.seed and args.type != 'build':
+        parser.error("--seed option is only for build mode")
+
+    if args.type == 'post':
+        if not args.source:
+            parser.error("--source option required for build")
+    elif args.type == 'build':
+        if not args.source:
+            parser.error("--source option required for build")
+        if not args.output:
+            parser.error("--output option required for build")
+    elif args.type == 'test':
+        if args.source:
+            parser.error("--source option ignored on test")
+        elif args.output:
+            parser.error("--output option ignored on test")
+
+    if args.type == 'test':
         suite = unittest.TestSuite()
         results = unittest.TestResult()
         suite.addTest(unittest.makeSuite(LexTest))
         suite.addTest(unittest.makeSuite(FileTest))
         runner = unittest.TextTestRunner()
         print(runner.run(suite))
-    elif sys.argv[1] == "post":
+    elif args.type == 'post':
         statepath = None
-        if len(sys.argv) == 3:
-            basefolder = os.path.dirname(sys.argv[2])
+        if not args.json:
+            basefolder = os.path.dirname(args.source[0])
             statepath = os.path.join(basefolder, "c3po.json")
         else:
-            statepath = sys.argv[3]
-        post = PostProcess(sys.argv[2], statepath)
+            statepath = args.json[0]
+        post = PostProcess(args.source[0], statepath)
         post.encrypt()
         post.write()
 
-    elif sys.argv[1] == "build":
-        srcfolder = sys.argv[2]
-        dstfolder = sys.argv[3]
+    elif args.type == 'build':
+        srcfolder = args.source[0]
+        dstfolder = args.output[0]
 
         if not os.path.exists(dstfolder):
             os.mkdir(dstfolder)
 
         seed = None
-        if len(sys.argv) == 5:
-            seed = sys.argv[4]
+        if args.seed:
+            seed = args.seed[0]
         project = Project(srcfolder, dstfolder, seed)
         project.parse()
         project.resolve()

@@ -223,15 +223,6 @@ class Line():
                     else:
                         value.extend(16 for i in range(16))
                     multifile["encrypt_strings"][token] = value
-            elif is_function(self.cleanline):
-                self.flags["encrypt_mark"] = "func"
-                func = get_function_calls(self.cleanline)[0]
-                if is_defdec(self.cleanline):
-                    #[string with null termination][PKCS7 padding]
-                    #TODO deduplicate
-                    multiline["encrypt_functions"].append({"func":func})
-                else:
-                    print("can only tag function declarations for encryption: '{}'".format(self.cleanline), file=sys.stderr)
             else:
                 print("Cannot encrypt requested type: '{}'".format(self.cleanline), file=sys.stderr)
 
@@ -274,41 +265,6 @@ class Line():
 
 
 
-
-        for index, chunk in enumerate(multiline["encrypt_functions"]):
-            func = chunk["func"]
-            args = get_function_arguments(func, self.cleanline);
-            length = multiline["encrypt_len"]
-            if func in self.cleanline and not is_defdec(self.cleanline):
-                #AES 256 requires 32 byte key lengths
-                if "<stdint.h>" not in multiline["includes"]:
-                    multiline["includes"].append("<stdint.h>")
-                if "<string.h>" not in multiline["includes"]:
-                    multiline["includes"].append("<string.h>")
-                if "\"c3po.h\"" not in multiline["includes"]:
-                    multiline["includes"].append("\"c3po.h\"")
-                self.prelines.extend("""
-    {{
-        const uint8_t* _{0}_key = (const uint8_t*)c3po_functions_map;
-        const uint8_t* _{0}_iv = (const uint8_t*)c3po_functions_map + 32;
-        uint8_t _{0}_buf[{1}];
-        const uint8_t* _{0}_enc = (const uint8_t*)c3po_functions_map + 48;
-        memcpy(_{0}_buf, _{0}_enc, {1});
-
-        struct aes_ctx ctx;
-        aes_init_ctx_iv(&ctx, _{0}_key, _{0}_iv);
-        aes_cbc_decrypt_buffer(&ctx, _{0}_buf, {1});
-
-        //TODO verify padding
-        volatile __typeof__(&{3}) _{0}_func = ((__typeof__(&{3}))((char*)_{0}_buf+{2}));
-        _{0}_func({4});
-""".format(func, length, index, func, ", ".join(args)).split("\n"))
-                self.line = ""
-                self.cleanline = ""
-                self.postlines.append("    }")
-
-
-
         if "shatter_mark" in self.flags and self.flags["shatter_mark"]:
             #build a shatter section
             self.postlines.append (asmlbljmp.format(shatterself[multiline["asm"]["index"]],
@@ -338,10 +294,8 @@ class Line():
 
 
         if "encrypt_mark" in self.flags:
-            if self.flags["encrypt_mark"] == "string":
-                self.line = ""
-                self.cleanline = ""
-            #dont comment out function definitions
+            self.line = ""
+            self.cleanline = ""
 
 
         #shuffle params first
