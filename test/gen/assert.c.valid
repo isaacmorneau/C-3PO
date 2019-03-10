@@ -1,23 +1,15 @@
+#include <stdbool.h>
 int main(int argc, char **argv) {
+    (void)argv;
+
     {
         volatile bool assert_check =!(argc > 0);
         if (assert_check) {
-        __asm__(
-            ".byte 0xf2;"
-            ".byte 0xf;"
-            ".byte 0x5e;"
-            :::);
-        }
-    }
-    {
-        volatile bool assert_check =!(argv[0] != NULL);
-        if (assert_check) {
+
         __asm__(
             ".byte 0x66;"
             ".byte 0xf;"
-            ".byte 0xc5;"
+            ".byte 0xe7;"
             :::);
         }
-    }
-    return 0;
-}
+    }}

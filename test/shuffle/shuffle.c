@@ -1,4 +1,5 @@
 #include <stdio.h>
+
 int main(void) {
 #pragma c3po shuffle(on)
     puts("1");

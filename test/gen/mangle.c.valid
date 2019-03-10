@@ -1,22 +1,17 @@
-void sub_c1e5() {
+#include <stdarg.h>
+#include <stddef.h>
+void sub_4878(int foo, char *bar, char baz) {
 }
-void test2(int a, void * c, char b) {
-}
-void test3(, int base, ...) {
-    va_list va;
-    va_start(va, base);
-    va_end(va);
+void t2(int foo, char *bar, char baz, ...) {
 
-}
-void sub_27bb(int b, int c, int a, ...) {
     va_list va;
-    va_start(va, c);
+    va_start(va, baz);
     va_end(va);
-
+}
+void t3(int foo, char baz, char *bar) {
 }
 int main(void) {
-    sub_c1e5();
-    test2(8325324, (void*)0, 'h');
-    test3(, 0, 16601, 50955, 61501, 44825, 41322, 41459, 3468);
-    sub_27bb('b', 'c', 'a', 11678, 21858, 15624, 28904, 9403);
+    sub_4878(1, NULL, 'a');
+    t2(1, NULL, 'a', 46555, 29432, 52430, 5002, 62205, 60896, 55060);
+    t3(1, 'a', NULL);
 }
