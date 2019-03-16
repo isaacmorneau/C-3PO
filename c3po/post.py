@@ -6,14 +6,19 @@ from Crypto.Cipher import AES
 #TODO unit test this
 
 class PostProcess():
-    def __init__(self, binarypath, statepath):
-        self.binarypath = binarypath
+    def __init__(self, data=[], state={}):
+        self.state = state
+        self.data = data
+
+    def read_data(self, binarypath):
+        self.data = list(open(binarypath,"rb").read())
+
+    def read_state(self, statepath):
         with open(statepath, "r") as s:
             self.state = json.load(s)
-        self.data = list(open(self.binarypath,"rb").read())
 
-    def write(self):
-        with open(self.binarypath, "wb") as bf:
+    def write(self, binarypath):
+        with open(binarypath, "wb") as bf:
             bf.write(bytes(self.data))
 
     def encrypt(self):

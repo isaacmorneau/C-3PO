@@ -53,9 +53,11 @@ if __name__ == "__main__":
             statepath = os.path.join(basefolder, "c3po.json")
         else:
             statepath = args.json[0]
-        post = PostProcess(args.source[0], statepath)
+        post = PostProcess()
+        post.read_data(args.source[0])
+        post.read_state(statepath)
         post.encrypt()
-        post.write()
+        post.write(args.source[0])
 
     elif args.type == 'build':
         srcfolder = args.source[0]
