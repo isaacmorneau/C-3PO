@@ -4,6 +4,7 @@
 import sys
 import os
 import argparse
+import c3po.output
 from c3po.project import Project
 from c3po.lex import LexTest
 from c3po.file import FileTest
@@ -17,8 +18,12 @@ if __name__ == "__main__":
     parser.add_argument("-o","--output", help="build only: the path to the folder to output to", nargs=1)
     parser.add_argument("--json", help="post only: path to the json state", nargs=1)
     parser.add_argument("--seed", help="build only: random seed", nargs=1)
+    parser.add_argument("--quiet", help="suppress output", action="store_true")
 
     args = parser.parse_args()
+
+    if args.quiet:
+        c3po.output.verbose = False
 
     if args.json and args.type != 'post':
         parser.error("--json option is only for post mode")

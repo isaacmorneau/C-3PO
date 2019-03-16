@@ -1,6 +1,7 @@
 import re
 import sys
 import random
+from .output import vprint
 from .lex import *
 from .asm import *
 
@@ -42,9 +43,9 @@ def shatter(options, flags):
         elif opt == "high":
             flags["shatter_level"] = 1
         else:
-            print("Unrecognized option for shatter: '{}'".format(opt), file=sys.stderr)
+            vprint("Unrecognized option for shatter: '{}'".format(opt), file=sys.stderr)
     if len(options) == 0:
-        print("Shatter  not turned on or off, unused directive", file=sys.stderr)
+        vprint("Shatter  not turned on or off, unused directive", file=sys.stderr)
 
 def shuffle(options, flags, index, multiline):
     for opt in options:
@@ -55,9 +56,9 @@ def shuffle(options, flags, index, multiline):
             flags["shuffle"] = False
             multiline["shuffle"][-1][1] = index
         else:
-            print("Unrecognized option for shuffle: '{}'".format(opt), file=sys.stderr)
+            vprint("Unrecognized option for shuffle: '{}'".format(opt), file=sys.stderr)
     if len(options) == 0:
-        print("Shuffle not turned on or off, unused directive", file=sys.stderr)
+        vprint("Shuffle not turned on or off, unused directive", file=sys.stderr)
 
 
 def mangle(options, feedforward):
@@ -70,7 +71,7 @@ def mangle(options, feedforward):
         elif "variadic" == opt:
             feedforward["variadic"] = True
         else:
-            print("Unrecognized option for mangle: '{}'".format(opt), file=sys.stderr)
+            vprint("Unrecognized option for mangle: '{}'".format(opt), file=sys.stderr)
     if len(options) == 0:
         #TODO decide what the default behavior for mangle
         pass
@@ -86,7 +87,7 @@ def encrypt(options, feedforward):
             try:
                 feedforward["padding"] = int(opt)
             except ValueError as ex:
-                print("Unrecognized option for encrypt: '{}'".format(opt), file=sys.stderr)
+                vprint("Unrecognized option for encrypt: '{}'".format(opt), file=sys.stderr)
 
 class Line():
     def __init__(self, index, rawline):
@@ -133,7 +134,7 @@ class Line():
                         encrypt(options, feedforward)
 
                     else:
-                        print("Unrecognized directive '{}'".format(directive), file=sys.stderr)
+                        vprint("Unrecognized directive '{}'".format(directive), file=sys.stderr)
         elif is_include(self.cleanline):
             self.isflag = True
             include = get_include(self.cleanline)
@@ -184,7 +185,7 @@ class Line():
                             multifile["mangle_params"][func] = params
                             multifile["mangle"][func].append("shuffle")
                         else:
-                            print("Not enough arguments to make shuffling useful: '{}'".format(self.cleanline), file=sys.stderr)
+                            vprint("Not enough arguments to make shuffling useful: '{}'".format(self.cleanline), file=sys.stderr)
                     else:
                         random.shuffle(params)
                         multifile["mangle_params"][func] = params
@@ -195,7 +196,7 @@ class Line():
                 if "variadic" in lastfeed:
                     args = get_function_arguments(func, self.cleanline)
                     if is_variadic(args):
-                        print("Function already variadic, unable to apply mangling to signature: '{}'".format(self.cleanline), file=sys.stderr)
+                        vprint("Function already variadic, unable to apply mangling to signature: '{}'".format(self.cleanline), file=sys.stderr)
                     elif is_defdec(self.cleanline):
                         if func not in multifile["mangle_variadic"]:
                             multifile["mangle_variadic"].append(func)
@@ -203,10 +204,10 @@ class Line():
                         #TODO append the va start and end to the line make sure its not optimized out
                         #additioinal checks for if this is a definition or a declaration are required
                     else:
-                        print("Can only apply mangling to function definitions and declarations: '{}'".format(self.cleanline), file=sys.stderr)
+                        vprint("Can only apply mangling to function definitions and declarations: '{}'".format(self.cleanline), file=sys.stderr)
 
             else:
-                print("Unable to apply mangling to signature: '{}'".format(self.cleanline), file=sys.stderr)
+                vprint("Unable to apply mangling to signature: '{}'".format(self.cleanline), file=sys.stderr)
         if "encrypt" in lastfeed:
             if is_string_define(self.cleanline):
                 self.flags["encrypt_mark"] = "string"
@@ -224,7 +225,7 @@ class Line():
                         value.extend(16 for i in range(16))
                     multifile["encrypt_strings"][token] = value
             else:
-                print("Cannot encrypt requested type: '{}'".format(self.cleanline), file=sys.stderr)
+                vprint("Cannot encrypt requested type: '{}'".format(self.cleanline), file=sys.stderr)
 
 
     def resolve(self, multiline, multifile, shatterself, shatterother):

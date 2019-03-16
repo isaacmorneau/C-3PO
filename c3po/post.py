@@ -2,6 +2,7 @@ import os
 import sys
 import json
 import unittest
+from .output import vprint
 from Crypto.Cipher import AES
 
 #TODO unit test this
@@ -25,9 +26,9 @@ class PostProcess():
     def encrypt(self):
         pe = self.state["post_encrypt"]
         keys = [{"key":batch["key"], "len":batch["len"]} for batch in pe]
-        print("Finding {} keys:".format(len(keys)))
+        vprint("Finding {} keys:".format(len(keys)))
         for i, batch in enumerate(keys):
-            print("    "+''.join("{:02x}".format(k) for k in batch["key"]))
+            vprint("    "+''.join("{:02x}".format(k) for k in batch["key"]))
 
         keystocheck = [i for i in range(len(keys))]
         for i,d in enumerate(self.data):
@@ -35,7 +36,7 @@ class PostProcess():
                 #if the first byte matches check the rest
                 #i could implement a string matching algorithm or i could not
                 if d == keys[k]["key"][0] and self.data[i:i+32] == keys[k]["key"]:
-                    #print("    found {} at offset {}".format(k, i))
+                    #vprint("    found {} at offset {}".format(k, i))
                     keys[k]["offset"] = i
                     #found dont check for it again
                     keystocheck.remove(k)
@@ -46,11 +47,11 @@ class PostProcess():
                 break
         if keystocheck:
             for k in keystocheck:
-                print("Unable to find key {}".format(''.join("{:02x}".format(k) for k in keys[k]["key"])))
-            print("Malformed binary, aborting")
+                vprint("Unable to find key {}".format(''.join("{:02x}".format(k) for k in keys[k]["key"])))
+            vprint("Malformed binary, aborting")
             raise ValueError("Malformed Binary")
 
-        print("Encrypting:")
+        vprint("Encrypting:")
         for batch in keys:
             key_data = batch["key"]
 
@@ -66,16 +67,16 @@ class PostProcess():
             padding_len = raw_data[-1]
             for p in range(1, padding_len + 1):
                 if raw_data[p*-1] != padding_len:
-                    print("PKCS7 padding verification failed")
-                    print(''.join(raw_data))
-                    print("abborting")
+                    vprint("PKCS7 padding verification failed")
+                    vprint(''.join(raw_data))
+                    vprint("abborting")
                     raise ValueError("Padding Failure")
-            print("PKCS7 passed ", end='')
+            vprint("PKCS7 passed ", end='')
 
             cipher = AES.new(bytes(key_data), AES.MODE_CBC, bytes(iv_data))
             enc_data = list(cipher.encrypt(bytes(raw_data)))
 
-            print("{}{}".format(''.join("{:02x}".format(k) for k in raw_data[:32]),
+            vprint("{}{}".format(''.join("{:02x}".format(k) for k in raw_data[:32]),
                                   "" if len(raw_data) <= 32 else "...{} bytes more".format(len(raw_data)-32)))
 
             #overwrite the raw data with the encrypted version
@@ -101,7 +102,7 @@ class PostTest(unittest.TestCase):
 
             self.assertEquals(p.data, expected)
         else:
-            print("please run from run_tests.sh in test/")
+            vprint("please run from run_tests.sh in test/")
 
     def test_bad_key(self):
         #only run in the directory in test
@@ -116,4 +117,4 @@ class PostTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 p.encrypt()
         else:
-            print("please run from run_tests.sh in test/")
+            vprint("please run from run_tests.sh in test/")

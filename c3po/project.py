@@ -3,6 +3,7 @@ import os
 import secrets
 import random
 import json
+from .output import vprint
 
 c3po_face ="""\033[33;m
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⠞⢙⠲⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
@@ -41,10 +42,10 @@ class Project():
         if not seed:
             seed = "".join("{:02x}".format(t) for t in secrets.token_bytes(5))
 
-        print("Using seed: {}".format(seed))
+        vprint("Using seed: {}".format(seed))
         random.seed(seed)
 
-        #print(c3po)
+        #vprint(c3po)
 
         self.files = []
 
@@ -71,9 +72,9 @@ class Project():
     #this performs the inital tokenization and collection of info
     #this will find the positions for future resolution
     def parse(self):
-        print("Parsing:")
+        vprint("Parsing:")
         for name, file in self.files.items():
-            print("    {}".format(file))
+            vprint("    {}".format(file))
             file.classify(self.multifile)
         #mangle to match ida or binja labels
         for func, ops in self.multifile["mangle"].items():
@@ -83,27 +84,27 @@ class Project():
     #this will now chose what should be resolved in things such as the
     #asm labels to be chosen globally
     def resolve(self):
-        print("Resolving:")
+        vprint("Resolving:")
         for name, file in self.files.items():
-            print("    {}".format(file))
+            vprint("    {}".format(file))
             file.resolve(self.multifile)
         if len(self.multifile["mangle"]) > 0:
-            print("Functions mangled:")
+            vprint("Functions mangled:")
         for func,opts in self.multifile["mangle"].items():
-            print("    [{}".format(func), end="")
+            vprint("    [{}".format(func), end="")
             if "name" in opts:
-                print(" : {}".format(self.multifile["mangle_match"][func+"("][:-1]), end="")
+                vprint(" : {}".format(self.multifile["mangle_match"][func+"("][:-1]), end="")
             if "shuffle" in opts:
-                print(" : {}".format(self.multifile["mangle_params"][func]), end="")
+                vprint(" : {}".format(self.multifile["mangle_params"][func]), end="")
             if "variadic" in opts:
-                print(" : <variadic>", end="")
-            print("]")
+                vprint(" : <variadic>", end="")
+            vprint("]")
 
     #this actually writes the completed files
     def write(self):
-        print("Writing:")
+        vprint("Writing:")
         for name, file in self.files.items():
-            print("    {}".format(file))
+            vprint("    {}".format(file))
             file.write()
         #write the state to the output folder
         with open(os.path.join(os.getcwd(), "c3po.json"), "w+") as cf:

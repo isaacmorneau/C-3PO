@@ -1,20 +1,20 @@
 #!/usr/bin/bash
 #unit tests
 echo "==> unit tests"
-../c3po.py test
+../c3po.py test --quiet
 #the following is used for the unit tests for post processing
 #clang gen/encrypt.c ../src/c3po.c -I ../src -Os -o post_unittest
 
 #integration tests
 echo "==> preparing for integration tests"
 mkdir -p gen
-../c3po.py build -s basic/ -o gen/ --seed c823d57855
-../c3po.py build -s assert/ -o gen/ --seed c823d57855
-../c3po.py build -s mangle/ -o gen/ --seed c823d57855
-../c3po.py build -s shatter/ -o gen/ --seed c823d57855
-../c3po.py build -s shuffle/ -o gen/ --seed c823d57855
+../c3po.py build -s basic/ -o gen/ --seed c823d57855 --quiet
+../c3po.py build -s assert/ -o gen/ --seed c823d57855 --quiet
+../c3po.py build -s mangle/ -o gen/ --seed c823d57855 --quiet
+../c3po.py build -s shatter/ -o gen/ --seed c823d57855 --quiet
+../c3po.py build -s shuffle/ -o gen/ --seed c823d57855 --quiet
 #run this last so the c3po.json is correct
-../c3po.py build -s encrypt/ -o gen/ --seed c823d57855
+../c3po.py build -s encrypt/ -o gen/ --seed c823d57855 --quiet
 
 echo "==> integration tests"
 for f in gen/*.c; do
