@@ -48,7 +48,7 @@ class PostProcess():
             for k in keystocheck:
                 print("Unable to find key {}".format(''.join("{:02x}".format(k) for k in keys[k]["key"])))
             print("Malformed binary, aborting")
-            sys.exit(1)
+            raise ValueError("Malformed Binary")
 
         print("Encrypting:")
         for batch in keys:
@@ -69,7 +69,7 @@ class PostProcess():
                     print("PKCS7 padding verification failed")
                     print(''.join(raw_data))
                     print("abborting")
-                    sys.exit(1)
+                    raise ValueError("Padding Failure")
             print("PKCS7 passed ", end='')
 
             cipher = AES.new(bytes(key_data), AES.MODE_CBC, bytes(iv_data))
@@ -87,7 +87,7 @@ class PostTest(unittest.TestCase):
         self.assertEquals(p.data, [])
         self.assertEquals(p.state, {})
 
-    def test_good_encryption(self):
+    def test_encryption(self):
         #only run in the directory in test
         if os.path.exists("./post_unittest"):
             p = PostProcess()
@@ -97,9 +97,23 @@ class PostTest(unittest.TestCase):
 
             p.encrypt()
 
-            #expected = list(open("./test/post_unittest_encrypted","rb").read())
-            #self.assertEquals(p.data, expected)
+            expected = list(open("./post_unittest_encrypted","rb").read())
 
-            p.write("./post_unittest_encrypted")
+            self.assertEquals(p.data, expected)
+        else:
+            print("please run from run_tests.sh in test/")
+
+    def test_bad_key(self):
+        #only run in the directory in test
+        if os.path.exists("./post_unittest"):
+            p = PostProcess()
+            p.read_data("./post_unittest")
+            p.read_state("./post_unittest.json")
+            #corrupt the key
+            p.state["post_encrypt"][0]["key"][0] += 1
+
+
+            with self.assertRaises(ValueError):
+                p.encrypt()
         else:
             print("please run from run_tests.sh in test/")
