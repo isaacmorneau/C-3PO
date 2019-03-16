@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import unittest
 from Crypto.Cipher import AES
 
 #TODO unit test this
@@ -80,3 +81,25 @@ class PostProcess():
             #overwrite the raw data with the encrypted version
             self.data[enc_start:enc_end] = enc_data
 
+class PostTest(unittest.TestCase):
+    def test_init(self):
+        p = PostProcess()
+        self.assertEquals(p.data, [])
+        self.assertEquals(p.state, {})
+
+    def test_good_encryption(self):
+        #only run in the directory in test
+        if os.path.exists("./post_unittest"):
+            p = PostProcess()
+            p.read_data("./post_unittest")
+            p.read_state("./post_unittest.json")
+
+
+            p.encrypt()
+
+            #expected = list(open("./test/post_unittest_encrypted","rb").read())
+            #self.assertEquals(p.data, expected)
+
+            p.write("./post_unittest_encrypted")
+        else:
+            print("please run from run_tests.sh in test/")

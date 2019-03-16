@@ -7,7 +7,7 @@ import argparse
 from c3po.project import Project
 from c3po.lex import LexTest
 from c3po.file import FileTest
-from c3po.post import PostProcess
+from c3po.post import PostProcess, PostTest
 import unittest
 
 if __name__ == "__main__":
@@ -44,6 +44,7 @@ if __name__ == "__main__":
         results = unittest.TestResult()
         suite.addTest(unittest.makeSuite(LexTest))
         suite.addTest(unittest.makeSuite(FileTest))
+        suite.addTest(unittest.makeSuite(PostTest))
         runner = unittest.TextTestRunner()
         print(runner.run(suite))
     elif args.type == 'post':
