@@ -14,6 +14,29 @@ int main(int argc, char **argv) {
             :::);
         }
     }    for (int i = 0; i < 10; ++i) {
-        printf("%d", i);
-    }
+
+    {
+        volatile bool assert_check =!(i < 10);
+        if (assert_check) {
+
+        __asm__(
+            ".byte 0x66;"
+            ".byte 0xf;"
+            ".byte 0x3a;"
+            ".byte 0x41;"
+            :::);
+        }
+    }        printf("%d", i);
+
+    {
+        volatile bool assert_check =!(i >= 0);
+        if (assert_check) {
+
+        __asm__(
+            ".byte 0xf3;"
+            ".byte 0xf;"
+            ".byte 0x59;"
+            :::);
+        }
+    }    }
 }
