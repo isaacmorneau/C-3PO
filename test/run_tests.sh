@@ -19,6 +19,8 @@ do
     echo ", building c3po $test"
     gcc ../src/c3po.c "gen/$test.c" -I ../src/ -o "gen/$test"
 done
+#finish the encryption pass
+../c3po.py post -s "gen/encrypt" --json ./c3po.json --quiet
 
 echo "==> integration tests"
 for f in gen/*.c; do
