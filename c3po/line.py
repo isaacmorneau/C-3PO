@@ -252,29 +252,30 @@ class Line():
         for token, value in multifile["encrypt_strings"].items():
             if token in self.cleanline and not is_string_define(self.cleanline):
                 key, iv = gen_key_iv()
-                builtdata = '''{{{},
-             {},
-             {}}}'''.format(", ".join("0x{:02x}".format(k) for k in key),
-                                        ", ".join("0x{:02x}".format(i) for i in iv),
-                                        ", ".join("0x{:02x}".format(v) for v in value))
+                keybytes = ", ".join("0x{:02x}".format(k) for k in key)
+                ivbytes = ", ".join("0x{:02x}".format(i) for i in iv)
+                databytes = ", ".join("0x{:02x}".format(v) for v in value)
+
                 multifile["post_encrypt"].append({"key":key,"len":len(value)})
                 add_includes("<stdint.h>", "<string.h>", '"c3po.h"')
-                self.prelines.extend("""
-    {{
-        static volatile const uint8_t _{0}_data[] = {1};
-        const uint8_t* _{0}_key = (const uint8_t*)_{0}_data;
-        const uint8_t* _{0}_iv = (const uint8_t*)_{0}_data + 32;
-        uint8_t _{0}_buf[{2}];
-        const uint8_t* _{0}_enc = (const uint8_t*)_{0}_data + 48;
-        memcpy(_{0}_buf, _{0}_enc, {2});
+                self.prelines.extend(f'''    {{
+        static volatile const uint8_t _{token}_data[] = {{
+                {keybytes},
+                {ivbytes},
+                {databytes}
+            }};
+        const uint8_t* _{token}_key = (const uint8_t*)_{token}_data;
+        const uint8_t* _{token}_iv = (const uint8_t*)_{token}_data + 32;
+        uint8_t _{token}_buf[{len(value)}];
+        const uint8_t* _{token}_enc = (const uint8_t*)_{token}_data + 48;
+        memcpy(_{token}_buf, _{token}_enc, {len(value)});
 
         struct aes_ctx ctx;
-        aes_init_ctx_iv(&ctx, _{0}_key, _{0}_iv);
-        aes_cbc_decrypt_buffer(&ctx, _{0}_buf, {2});
+        aes_init_ctx_iv(&ctx, _{token}_key, _{token}_iv);
+        aes_cbc_decrypt_buffer(&ctx, _{token}_buf, {len(value)});
 
         //TODO verify padding
-        char* {0} = (char*)_{0}_buf;
-""".format(token, builtdata, len(value)).split("\n"))
+        const char* {token} = (const char*)_{token}_buf;'''.split("\n"))
                 self.postlines.append("    }")
 
 
