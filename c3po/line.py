@@ -23,7 +23,7 @@ def broken_bytes():
     return '''
         __asm__(
             {}
-            :::);'''.format('\n            '.join("\".byte 0x{:x};\"".format(opt) for opt in ops))
+            :::);'''.format('\n'.join("\".byte 0x{:x};\"".format(opt) for opt in ops))
 
 
 def shatter(options, flags):
@@ -276,12 +276,12 @@ class Line():
 
         //TODO verify padding
         const char* {token} = (const char*)_{token}_buf;'''.split("\n"))
-                self.postlines.append("    }")
+                self.postlines.insert(0, "    }")
 
 
         if "shatter_mark" in self.flags and self.flags["shatter_mark"]:
             #build a shatter section
-            self.postlines.append (asmlbljmp.format(shatterself[multiline["asm"]["index"]],
+            self.postlines.insert(0, asmlbljmp.format(shatterself[multiline["asm"]["index"]],
                                           shatterother[multiline["asm"]["index"]],
                                           self.flags["shatter_type"]))
             multiline["asm"]["index"] += 1
@@ -295,14 +295,12 @@ class Line():
             #wipe out both lines for checks as the line is totally replaced
             self.line = ""
             self.cleanline = ""
-            self.postlines.extend('''    {{
-        volatile bool assert_check =!({});
-        if (assert_check) {{'''.format(args).split("\n"))
-
-            #TODO collect any additional asm nasties to troll the disassembler in here
-            #possibly target it with shatter jumps to make the disassembler evaluate it multiple times
-            self.postlines.extend(broken_bytes().split("\n"))
-            self.postlines.extend(["        }","    }"])
+            self.postlines = f'''    {{
+        volatile bool assert_check =!({args});
+        if (assert_check) {{
+            {broken_bytes()}
+        }}
+    }}'''.split('\n') + self.postlines
 
 
 
@@ -323,7 +321,7 @@ class Line():
             if ({name}_mfl) {{'''.split('\n'))
                 self.line = f'                ((__typeof__({name}) *){name}_mfl)({args});'
                 self.cleanline= self.line.strip()
-                self.postlines.extend('''
+                self.postlines = '''
 #ifndef NDEBUG
             } else {
                 puts(dlerror());
@@ -335,7 +333,7 @@ class Line():
             }
         }
 #endif
-    }'''.split('\n'))
+    }'''.split('\n') + self.postlines
 
 
 
@@ -375,11 +373,11 @@ class Line():
                     argument_names = get_token_names(arguments)
                     finalnamed = argument_names[-1].split()[-1]
                     add_includes("<stdarg.h>")
-                    self.postlines.extend("""
+                    self.postlines = f"""
     va_list va;
-    va_start(va, {});
+    va_start(va, {finalnammed});
     va_end(va);
-""".format(finalnamed).split("\n"))
+""".split("\n") + self.postlines
                 else:
                     additional_args = gen_args()
                     self.line = append_arguments(func, additional_args, self.line)
@@ -414,11 +412,11 @@ class Line():
                         argument_names = get_token_names(arguments)
                         finalnamed = argument_names[-1].split()[-1]
                         add_includes("<stdarg.h>")
-                        self.postlines.extend("""
+                        self.postlines = f"""
     va_list va;
-    va_start(va, {});
+    va_start(va, {finalnammed});
     va_end(va);
-""".format(finalnamed).split("\n"))
+""".split("\n") + self.postlines
                     else:
                         additional_args = gen_args()
                         line = append_arguments(func, additional_args, line)
