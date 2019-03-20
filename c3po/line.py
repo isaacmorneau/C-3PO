@@ -233,6 +233,17 @@ class Line():
 
 
     def resolve(self, multiline, multifile, shatterself, shatterother):
+        def gen_key_iv():
+            #AES 256 requires 32 byte key lengths
+            key = list(bytes([random.randrange(0, 256) for i in range(32)]))
+            iv = list(bytes([random.randrange(0, 256) for i in range(16)]))
+            return key, iv
+        def gen_args():
+            #TODO allow randomization to be configurable
+            return [str(random.randrange(0, 65535)) for i in range(random.randrange(1, 10))]
+        def add_includes(*includes):
+            multiline["includes"].extend(include for include in includes if include not in multiline["includes"])
+
         for func in multifile["encrypt_func"]:
             if func in self.cleanline and has_function(func, self.cleanline) and is_defdec(self.cleanline, ["{"]):
                 self.line = '__attribute__ ((visibility ("default"))) {}'.format(self.cleanline)
@@ -240,21 +251,14 @@ class Line():
 
         for token, value in multifile["encrypt_strings"].items():
             if token in self.cleanline and not is_string_define(self.cleanline):
-                #AES 256 requires 32 byte key lengths
-                key = list(bytes([random.randrange(0, 256) for i in range(32)]))
-                iv = list(bytes([random.randrange(0, 256) for i in range(16)]))
+                key, iv = gen_key_iv()
                 builtdata = '''{{{},
              {},
              {}}}'''.format(", ".join("0x{:02x}".format(k) for k in key),
                                         ", ".join("0x{:02x}".format(i) for i in iv),
                                         ", ".join("0x{:02x}".format(v) for v in value))
                 multifile["post_encrypt"].append({"key":key,"len":len(value)})
-                if "<stdint.h>" not in multiline["includes"]:
-                    multiline["includes"].append("<stdint.h>")
-                if "<string.h>" not in multiline["includes"]:
-                    multiline["includes"].append("<string.h>")
-                if "\"c3po.h\"" not in multiline["includes"]:
-                    multiline["includes"].append("\"c3po.h\"")
+                add_includes("<stdint.h>", "<string.h>", '"c3po.h"')
                 self.prelines.extend("""
     {{
         static volatile const uint8_t _{0}_data[] = {1};
@@ -286,8 +290,7 @@ class Line():
         if "assert_mark" in self.flags:
             args = ", ".join(get_function_arguments("assert", self.cleanline))
 
-            if "<stdbool.h>" not in multiline["includes"]:
-                multiline["includes"].append("<stdbool.h>")
+            add_includes("<stdbool.h>")
             #wipe out both lines for checks as the line is totally replaced
             self.line = ""
             self.cleanline = ""
@@ -308,8 +311,7 @@ class Line():
                 self.cleanline = ""
             elif self.flags["encrypt_mark"] == "func":
                 name, args = self.flags["encrypt_func"]
-                if "<dlfcn.h>" not in multiline["includes"]:
-                    multiline["includes"].append("<dlfcn.h>")
+                add_includes("<dlfcn.h>")
                 self.line = '''
     {{
         void *{0}_mdl = dlopen(NULL, RTLD_NOW | RTLD_LOCAL), *{0}_mfl;
@@ -369,16 +371,14 @@ class Line():
                     #quick break to select the name
                     argument_names = get_token_names(arguments)
                     finalnamed = argument_names[-1].split()[-1]
-                    if "<stdarg.h>" not in multiline["includes"]:
-                        multiline["includes"].append("<stdarg.h>")
+                    add_includes("<stdarg.h>")
                     self.postlines.extend("""
     va_list va;
     va_start(va, {});
     va_end(va);
 """.format(finalnamed).split("\n"))
                 else:
-                    #TODO allow randomization to be configurable
-                    additional_args = [str(random.randrange(0, 65535)) for i in range(random.randrange(1, 10))]
+                    additional_args = gen_args()
                     self.line = append_arguments(func, additional_args, self.line)
                     self.cleanline = self.line.strip()
 
@@ -410,16 +410,14 @@ class Line():
                         #quick break to select the name
                         argument_names = get_token_names(arguments)
                         finalnamed = argument_names[-1].split()[-1]
-                        if "<stdarg.h>" not in multiline["includes"]:
-                            multiline["includes"].append("<stdarg.h>")
+                        add_includes("<stdarg.h>")
                         self.postlines.extend("""
     va_list va;
     va_start(va, {});
     va_end(va);
 """.format(finalnamed).split("\n"))
                     else:
-                        #TODO allow randomization to be configurable
-                        additional_args = [str(random.randrange(0, 65535)) for i in range(random.randrange(1, 10))]
+                        additional_args = gen_args()
                         line = append_arguments(func, additional_args, line)
 
                     self.prelines[index] = line
