@@ -224,6 +224,11 @@ class Line():
                     else:
                         value.extend(16 for i in range(16))
                     multifile["encrypt_strings"][token] = value
+            elif is_function(self.cleanline):
+                self.flags["encrypt_mark"] = "func"
+                name = get_function_calls(self.cleanline)[0]
+                args = get_function_arguments(name, self.cleanline)
+                self.flags["encrypt_func"] = name, args
             else:
                 vprint("Cannot encrypt requested type: '{}'".format(self.cleanline), file=sys.stderr)
 
@@ -265,7 +270,6 @@ class Line():
                 self.postlines.append("    }")
 
 
-
         if "shatter_mark" in self.flags and self.flags["shatter_mark"]:
             #build a shatter section
             self.postlines.append (asmlbljmp.format(shatterself[multiline["asm"]["index"]],
@@ -295,8 +299,35 @@ class Line():
 
 
         if "encrypt_mark" in self.flags:
-            self.line = ""
-            self.cleanline = ""
+            if self.flags["encrypt_mark"] == "string":
+                self.line = ""
+                self.cleanline = ""
+            elif self.flags["encrypt_mark"] == "func":
+                name, args = self.flags["encrypt_func"]
+                if "<dlfcn.h>" not in multiline["includes"]:
+                    multiline["includes"].append("<dlfcn.h>")
+                self.line = '''
+    {{
+        void *{0}_mdl = dlopen(NULL, RTLD_NOW | RTLD_LOCAL), *{0}_mfl;
+        if ({0}_mdl) {{
+            //TODO encrypt the string
+            {0}_mfl = dlsym({0}_mdl, "{0}");
+            if ({0}_mfl) {{
+                ((__typeof__({0}) *){0}_mfl)({1});
+#ifndef NDEBUG
+            }} else {{
+                puts(dlerror());
+            }}
+        }} else {{
+            puts(dlerror());
+        }}
+#else
+            }}
+        }}
+#endif
+    }}
+'''.format(name, ','.join(args))
+
 
 
         #shuffle params first

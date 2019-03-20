@@ -1,8 +1,8 @@
-cmake_minimum_required (VERSION 3.0)
-project (c3po)
+cmake_minimum_required(VERSION 3.4)
+project(c3po)
 
-set (c3po_VERSION_MAJOR 1)
-set (c3po_VERSION_MINOR 0)
+set(c3po_VERSION_MAJOR 1)
+set(c3po_VERSION_MINOR 0)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
@@ -29,6 +29,10 @@ set(SOURCES_DEBUG
     "./src/test.c"
     "./src/c3po.c"
     )
+
+#enable -rdynamic
+set(CMAKE_ENABLE_EXPORTS 1)
+
 add_executable(c3po ${SOURCES})
 target_compile_definitions(c3po PRIVATE C3PO)
 
@@ -45,11 +49,8 @@ set_directory_properties(PROPERTY ADDITIONAL_MAKE_CLEAN_FILES "${PROJECT_SOURCE_
 #ensure generation works before attempting final compilation
 add_dependencies(c3po gen_c3po)
 
-#used to trigger the full strip after the fact
-add_custom_target(strip_c3po ALL COMMAND strip -R .comment -R .note -R .note.ABI-tag -R .note.gnu.build-id -R .gnu.hash -R .gnu.version "${PROJECT_BINARY_DIR}/c3po")
-add_dependencies(strip_c3po c3po)
 add_custom_target(post_c3po ALL COMMAND python3 ${PROJECT_SOURCE_DIR}/c3po.py "post" "-s" "${PROJECT_BINARY_DIR}/c3po")
-add_dependencies(post_c3po strip_c3po)
+add_dependencies(post_c3po c3po)
 
 
 if (CMAKE_BUILD_TYPE EQUAL Release)
@@ -60,5 +61,5 @@ endif()
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-target_link_libraries(c3po rt Threads::Threads)
-target_link_libraries(c3pod rt Threads::Threads)
+target_link_libraries(c3po rt dl Threads::Threads)
+target_link_libraries(c3pod rt dl Threads::Threads)
