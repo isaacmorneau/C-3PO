@@ -276,7 +276,9 @@ class Line():
 
         //TODO verify padding
         const char* {token} = (const char*)_{token}_buf;'''.split("\n"))
-                self.postlines.insert(0, "    }")
+                self.postlines.insert(0, f'''
+        memset(_{token}_buf, 0, {len(value)});
+      }}''')
 
 
         if "shatter_mark" in self.flags and self.flags["shatter_mark"]:
@@ -312,13 +314,50 @@ class Line():
                 name, args = self.flags["encrypt_func"]
                 #if the name was mangled use that one
                 mangled = name if name+'(' not in multifile["mangle_match"] else multifile["mangle_match"][name+'('][:-1]
-                add_includes("<dlfcn.h>")
+                #get the encryption data
+                key, iv = gen_key_iv()
+                keybytes = ", ".join("0x{:02x}".format(k) for k in key)
+                ivbytes = ", ".join("0x{:02x}".format(i) for i in iv)
+                #prepare the name for encryption
+                value = list(mangled.encode())
+                value.append(0)
+                padding = 16 - len(value) % 16
+                #always pad
+                if padding > 0:
+                    value.extend(padding for i in range(padding))
+                else:
+                    value.extend(16 for i in range(16))
+
+                databytes = ", ".join("0x{:02x}".format(v) for v in value)
+
+                multifile["post_encrypt"].append({"key":key,"len":len(value)})
+                add_includes("<stdint.h>", "<string.h>", '"c3po.h"', "<dlfcn.h>")
                 self.prelines.extend(f'''
     {{
         void *{name}_mdl = dlopen(NULL, RTLD_NOW | RTLD_LOCAL), *{name}_mfl;
         if ({name}_mdl) {{
-            //TODO encrypt the string
-            {name}_mfl = dlsym({name}_mdl, "{mangled}");
+            {{
+                static volatile const uint8_t _{name}_data[] = {{
+                    {keybytes},
+                    {ivbytes},
+                    {databytes}
+                }};
+                const uint8_t* _{name}_key = (const uint8_t*)_{name}_data;
+                const uint8_t* _{name}_iv = (const uint8_t*)_{name}_data + 32;
+                uint8_t _{name}_buf[{len(value)}];
+                const uint8_t* _{name}_enc = (const uint8_t*)_{name}_data + 48;
+                memcpy(_{name}_buf, _{name}_enc, {len(value)});
+
+                struct aes_ctx ctx;
+                aes_init_ctx_iv(&ctx, _{name}_key, _{name}_iv);
+                aes_cbc_decrypt_buffer(&ctx, _{name}_buf, {len(value)});
+
+                //TODO verify padding
+
+                {name}_mfl = dlsym({name}_mdl, (const char*)_{name}_buf);
+                memset(_{name}_buf, 0, {len(value)});
+            }}
+
             dlclose({name}_mdl);
             if ({name}_mfl) {{'''.split('\n'))
                 self.cleanline= f'((__typeof__({mangled}) *){name}_mfl)({args});'
