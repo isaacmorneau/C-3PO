@@ -416,7 +416,7 @@ class Line():
                     add_includes("<stdarg.h>")
                     self.postlines = f'''
     va_list va;
-    va_start(va, {finalnammed});
+    va_start(va, {finalnamed});
     va_end(va);
 '''.split("\n") + self.postlines
                 else:
@@ -455,7 +455,7 @@ class Line():
                         add_includes("<stdarg.h>")
                         self.postlines = f'''
     va_list va;
-    va_start(va, {finalnammed});
+    va_start(va, {finalnamed});
     va_end(va);
 '''.split("\n") + self.postlines
                     else:
