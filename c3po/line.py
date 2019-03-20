@@ -246,7 +246,7 @@ class Line():
 
         for func in multifile["encrypt_func"]:
             if func in self.cleanline and has_function(func, self.cleanline) and is_defdec(self.cleanline, ["{"]):
-                self.line = '__attribute__ ((visibility ("default"))) {}'.format(self.cleanline)
+                self.line = f'__attribute__ ((visibility ("default"))) {self.cleanline}'
                 self.cleanline = self.line
 
         for token, value in multifile["encrypt_strings"].items():
@@ -310,17 +310,19 @@ class Line():
                 self.cleanline = ""
             elif self.flags["encrypt_mark"] == "func":
                 name, args = self.flags["encrypt_func"]
+                #if the name was mangled use that one
+                mangled = name if name+'(' not in multifile["mangle_match"] else multifile["mangle_match"][name+'('][:-1]
                 add_includes("<dlfcn.h>")
                 self.prelines.extend(f'''
     {{
         void *{name}_mdl = dlopen(NULL, RTLD_NOW | RTLD_LOCAL), *{name}_mfl;
         if ({name}_mdl) {{
             //TODO encrypt the string
-            {name}_mfl = dlsym({name}_mdl, "{name}");
+            {name}_mfl = dlsym({name}_mdl, "{mangled}");
             dlclose({name}_mdl);
             if ({name}_mfl) {{'''.split('\n'))
-                self.line = f'                ((__typeof__({name}) *){name}_mfl)({args});'
-                self.cleanline= self.line.strip()
+                self.cleanline= f'((__typeof__({mangled}) *){name}_mfl)({args});'
+                self.line = f'                {self.cleanline}'
                 self.postlines = '''
 #ifndef NDEBUG
             } else {
@@ -373,11 +375,11 @@ class Line():
                     argument_names = get_token_names(arguments)
                     finalnamed = argument_names[-1].split()[-1]
                     add_includes("<stdarg.h>")
-                    self.postlines = f"""
+                    self.postlines = f'''
     va_list va;
     va_start(va, {finalnammed});
     va_end(va);
-""".split("\n") + self.postlines
+'''.split("\n") + self.postlines
                 else:
                     additional_args = gen_args()
                     self.line = append_arguments(func, additional_args, self.line)
@@ -412,11 +414,11 @@ class Line():
                         argument_names = get_token_names(arguments)
                         finalnamed = argument_names[-1].split()[-1]
                         add_includes("<stdarg.h>")
-                        self.postlines = f"""
+                        self.postlines = f'''
     va_list va;
     va_start(va, {finalnammed});
     va_end(va);
-""".split("\n") + self.postlines
+'''.split("\n") + self.postlines
                     else:
                         additional_args = gen_args()
                         line = append_arguments(func, additional_args, line)
@@ -441,7 +443,7 @@ class Line():
             return
         else:
             if self.prelines:
-                file.write("\n".join(self.prelines))
-            file.write(self.line+"\n")
+                file.write("\n".join(self.prelines)+"\n")
+            file.write(f"{self.line}\n")
             if self.postlines:
                 file.write("\n".join(self.postlines))

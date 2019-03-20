@@ -3,6 +3,7 @@
 #include "c3po.h"
 #include "test.h"
 
+#pragma c3po mangle(name)
 void foobar(void) {
     puts("hello world");
 }
