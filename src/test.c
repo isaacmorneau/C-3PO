@@ -4,7 +4,7 @@
 #include "c3po.h"
 #include "test.h"
 
-extern void foobar(void) {
+void foobar(void) {
     puts("hello world");
 }
 

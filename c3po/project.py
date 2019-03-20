@@ -60,6 +60,8 @@ class Project():
             "mangle_variadic":[],
             #token name: [padded string bytes]
             "encrypt_strings":{},
+            #function names
+            "encrypt_func":[],
             #to be encrypted after the encryption
             #[(key, length)]
             "post_encrypt":[],

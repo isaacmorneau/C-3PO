@@ -201,8 +201,6 @@ class Line():
                         if func not in multifile["mangle_variadic"]:
                             multifile["mangle_variadic"].append(func)
                         multifile["mangle"][func].append("variadic")
-                        #TODO append the va start and end to the line make sure its not optimized out
-                        #additioinal checks for if this is a definition or a declaration are required
                     else:
                         vprint("Can only apply mangling to function definitions and declarations: '{}'".format(self.cleanline), file=sys.stderr)
 
@@ -228,12 +226,18 @@ class Line():
                 self.flags["encrypt_mark"] = "func"
                 name = get_function_calls(self.cleanline)[0]
                 args = get_function_arguments(name, self.cleanline)
+                multifile["encrypt_func"].append(name)
                 self.flags["encrypt_func"] = name, args
             else:
                 vprint("Cannot encrypt requested type: '{}'".format(self.cleanline), file=sys.stderr)
 
 
     def resolve(self, multiline, multifile, shatterself, shatterother):
+        for func in multifile["encrypt_func"]:
+            if func in self.cleanline and has_function(func, self.cleanline) and is_defdec(self.cleanline, ["{"]):
+                self.line = '__attribute__ ((visibility ("default"))) {}'.format(self.cleanline)
+                self.cleanline = self.line
+
         for token, value in multifile["encrypt_strings"].items():
             if token in self.cleanline and not is_string_define(self.cleanline):
                 #AES 256 requires 32 byte key lengths
