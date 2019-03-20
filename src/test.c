@@ -1,4 +1,3 @@
-#include <dlfcn.h>
 #include <stdio.h>
 
 #include "c3po.h"

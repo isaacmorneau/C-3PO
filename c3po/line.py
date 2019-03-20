@@ -227,7 +227,7 @@ class Line():
                 name = get_function_calls(self.cleanline)[0]
                 args = get_function_arguments(name, self.cleanline)
                 multifile["encrypt_func"].append(name)
-                self.flags["encrypt_func"] = name, args
+                self.flags["encrypt_func"] = name, ','.join(args)
             else:
                 vprint("Cannot encrypt requested type: '{}'".format(self.cleanline), file=sys.stderr)
 
@@ -312,27 +312,29 @@ class Line():
             elif self.flags["encrypt_mark"] == "func":
                 name, args = self.flags["encrypt_func"]
                 add_includes("<dlfcn.h>")
-                self.line = '''
+                self.prelines.extend(f'''
     {{
-        void *{0}_mdl = dlopen(NULL, RTLD_NOW | RTLD_LOCAL), *{0}_mfl;
-        if ({0}_mdl) {{
+        void *{name}_mdl = dlopen(NULL, RTLD_NOW | RTLD_LOCAL), *{name}_mfl;
+        if ({name}_mdl) {{
             //TODO encrypt the string
-            {0}_mfl = dlsym({0}_mdl, "{0}");
-            if ({0}_mfl) {{
-                ((__typeof__({0}) *){0}_mfl)({1});
+            {name}_mfl = dlsym({name}_mdl, "{name}");
+            dlclose({name}_mdl);
+            if ({name}_mfl) {{'''.split('\n'))
+                self.line = f'                ((__typeof__({name}) *){name}_mfl)({args});'
+                self.cleanline= self.line.strip()
+                self.postlines.extend('''
 #ifndef NDEBUG
-            }} else {{
+            } else {
                 puts(dlerror());
-            }}
-        }} else {{
+            }
+        } else {
             puts(dlerror());
-        }}
+        }
 #else
-            }}
-        }}
+            }
+        }
 #endif
-    }}
-'''.format(name, ','.join(args))
+    }'''.split('\n'))
 
 
 
