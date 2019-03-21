@@ -295,6 +295,7 @@ class Line():
     }}'''.split('\n'))
 
         if "timer_mark" in self.flags:
+            #TODO see if you can use RDTSC as a harder to fool timing method
             clock_modes = ["CLOCK_REALTIME", "CLOCK_REALTIME_COARSE", "CLOCK_MONOTONIC",
                            "CLOCK_MONOTONIC_COARSE", "CLOCK_MONOTONIC_RAW", "CLOCK_BOOTTIME"]
             self.line = ""
@@ -317,6 +318,15 @@ clock_gettime({mode}, &_{name}_{count});
 '''.split('\n'))
             if not start:
                 self.postlines.extend(f'''
+    {{
+        double _{name}_ms_diff = ((double)_{name}_{count}.tv_sec*1000 + (double)_{name}_{count}.tv_nsec / 1.0e6) -
+            ((double)_{name}_{count-1}.tv_sec * 1000 + (double)_{name}_{count-1}.tv_nsec / 1.0e6);
+        if (_{name}_ms_diff > {timing}) {{
+            printf("failed timing %lf\\n", _{name}_ms_diff);
+        }} else {{
+            printf("passed timing %lf\\n", _{name}_ms_diff);
+        }}
+    }}
 clock_gettime({mode}, &_{name}_{count-1});
 '''.split('\n'))
 

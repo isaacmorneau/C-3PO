@@ -13,12 +13,12 @@ int main(void) {
 #pragma c3po timer(main, on)
     printf("decoded '%s'\n", CSTR);
 
-#pragma c3po timer(main, 5000)
+#pragma c3po timer(main, 500)
 
 #pragma c3po encrypt
     foobar();
 
-#pragma c3po timer(main, 5000)
+#pragma c3po timer(main, 500)
 //clock_gettime(
     return 0;
 }
