@@ -88,6 +88,14 @@ def encrypt(options, feedforward):
                 feedforward["padding"] = int(opt)
             except ValueError as ex:
                 vprint("Unrecognized option for encrypt: '{}'".format(opt), file=sys.stderr)
+def pkcs7_pad(value):
+    padding = 16 - len(value) % 16
+    #always pad
+    if padding > 0:
+        value.extend(padding for i in range(padding))
+    else:
+        value.extend(16 for i in range(16))
+    return value
 
 class Line():
     def __init__(self, index, rawline):
@@ -215,12 +223,7 @@ class Line():
                     value.extend(0 for i in range(lastfeed["padding"]))
                 if token not in multifile["encrypt_strings"]:
                     #[string with null termination][PKCS7 padding]
-                    padding = 16 - len(value) % 16
-                    #always pad
-                    if padding > 0:
-                        value.extend(padding for i in range(padding))
-                    else:
-                        value.extend(16 for i in range(16))
+                    value = pkcs7_pad(value)
                     multifile["encrypt_strings"][token] = value
             elif is_function(self.cleanline):
                 self.flags["encrypt_mark"] = "func"
@@ -257,7 +260,7 @@ class Line():
                 databytes = ", ".join("0x{:02x}".format(v) for v in value)
 
                 multifile["post_encrypt"].append({"key":key,"len":len(value)})
-                add_includes("<stdint.h>", "<string.h>", '"c3po.h"')
+                add_includes("<stdint.h>", "<string.h>", '"c3po.h"', "<stdbool.h>")
                 self.prelines.extend(f'''    {{
         static volatile const uint8_t _{token}_data[] = {{
                 {keybytes},
@@ -274,10 +277,21 @@ class Line():
         aes_init_ctx_iv(&ctx, _{token}_key, _{token}_iv);
         aes_cbc_decrypt_buffer(&ctx, _{token}_buf, {len(value)});
 
-        //TODO verify padding
-        const char* {token} = (const char*)_{token}_buf;'''.split("\n"))
+        //verify padding
+        uint8_t pad = _{token}_buf[{len(value)}-1];
+        bool failed = false;
+        for (size_t i = 0; i < {len(value)} && i < pad; ++i) {{
+            if (_{token}_buf[{len(value)}-1-i] != pad) {{
+                failed = true;
+                break;
+            }}
+        }}
+        const char* {token} = (const char*)_{token}_buf;
+
+        if (!failed) {{'''.split("\n"))
                 self.postlines.insert(0, f'''
-        memset(_{token}_buf, 0, {len(value)});
+            memset(_{token}_buf, 0, {len(value)});
+        }}
       }}''')
 
 
@@ -321,20 +335,14 @@ class Line():
                 #prepare the name for encryption
                 value = list(mangled.encode())
                 value.append(0)
-                padding = 16 - len(value) % 16
-                #always pad
-                if padding > 0:
-                    value.extend(padding for i in range(padding))
-                else:
-                    value.extend(16 for i in range(16))
-
+                value = pkcs7_pad(value)
                 databytes = ", ".join("0x{:02x}".format(v) for v in value)
 
                 multifile["post_encrypt"].append({"key":key,"len":len(value)})
-                add_includes("<stdint.h>", "<string.h>", '"c3po.h"', "<dlfcn.h>")
+                add_includes("<stdint.h>", "<string.h>", '"c3po.h"', "<dlfcn.h>", "<stdbool.h>")
                 self.prelines.extend(f'''
     {{
-        void *{name}_mdl = dlopen(NULL, RTLD_NOW | RTLD_LOCAL), *{name}_mfl;
+        void *{name}_mdl = dlopen(NULL, RTLD_NOW | RTLD_LOCAL), *{name}_mfl = NULL;
         if ({name}_mdl) {{
             {{
                 static volatile const uint8_t _{name}_data[] = {{
@@ -352,10 +360,19 @@ class Line():
                 aes_init_ctx_iv(&ctx, _{name}_key, _{name}_iv);
                 aes_cbc_decrypt_buffer(&ctx, _{name}_buf, {len(value)});
 
-                //TODO verify padding
-
-                {name}_mfl = dlsym({name}_mdl, (const char*)_{name}_buf);
-                memset(_{name}_buf, 0, {len(value)});
+                //verify padding
+                uint8_t pad = _{name}_buf[{len(value)}-1];
+                bool failed = false;
+                for (size_t i = 0; i < {len(value)} && i < pad; ++i) {{
+                    if (_{name}_buf[{len(value)}-1-i] != pad) {{
+                        failed = true;
+                        break;
+                    }}
+                }}
+                if (!failed) {{
+                    {name}_mfl = dlsym({name}_mdl, (const char*)_{name}_buf);
+                    memset(_{name}_buf, 0, {len(value)});
+                }}
             }}
 
             dlclose({name}_mdl);

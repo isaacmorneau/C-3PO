@@ -21,7 +21,7 @@ void c3po_zero_elf() {
     }
 
     unsigned long long start = 0, end = 0;
-    int ret;
+    int ret = 0;
     ret = fscanf(f, C3PO_ADDRESS_MAPS, &start, &end);
     if (ret != 2) {
         //procfs chagned???
