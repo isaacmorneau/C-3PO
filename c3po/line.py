@@ -43,7 +43,7 @@ def shatter(options, flags):
         elif opt == "high":
             flags["shatter_level"] = 1
         else:
-            vprint("Unrecognized option for shatter: '{}'".format(opt), file=sys.stderr)
+            vprint(f"Unrecognized option for shatter: '{opt}'", file=sys.stderr)
     if len(options) == 0:
         vprint("Shatter  not turned on or off, unused directive", file=sys.stderr)
 
@@ -56,7 +56,7 @@ def shuffle(options, flags, index, multiline):
             flags["shuffle"] = False
             multiline["shuffle"][-1][1] = index
         else:
-            vprint("Unrecognized option for shuffle: '{}'".format(opt), file=sys.stderr)
+            vprint(f"Unrecognized option for shuffle: '{opt}'", file=sys.stderr)
     if len(options) == 0:
         vprint("Shuffle not turned on or off, unused directive", file=sys.stderr)
 
@@ -71,7 +71,7 @@ def mangle(options, feedforward):
         elif "variadic" == opt:
             feedforward["variadic"] = True
         else:
-            vprint("Unrecognized option for mangle: '{}'".format(opt), file=sys.stderr)
+            vprint(f"Unrecognized option for mangle: '{opt}'", file=sys.stderr)
     if len(options) == 0:
         #TODO decide what the default behavior for mangle
         pass
@@ -87,7 +87,30 @@ def encrypt(options, feedforward):
             try:
                 feedforward["padding"] = int(opt)
             except ValueError as ex:
-                vprint("Unrecognized option for encrypt: '{}'".format(opt), file=sys.stderr)
+                vprint(f"Unrecognized option for encrypt: '{opt}'", file=sys.stderr)
+
+def timer(options, flags):
+    #default to 500ms
+    timing = 500
+    name = None
+    start = False
+    for opt in options:
+        if opt == "on":
+            start = True
+        else:
+            try:
+                timing = int(opt)
+                continue
+            except ValueError:
+                if name:
+                    vprint(f"Unrecognized option for timer: '{opt}'", file=sys.stderr)
+                else:
+                    #its a name
+                    name = opt
+
+    flags["timer_mark"] = name if name else "generic_timer", timing, start
+
+
 def pkcs7_pad(value):
     padding = 16 - len(value) % 16
     #always pad
@@ -109,40 +132,45 @@ class Line():
         self.postlines = []
 
     def __str__(self):
-        return "{}:{}:{}".format(self.index, self.flags.items(), self.cleanline)
+        return f"{self.index}:{self.flags.items()}:{self.cleanline}"
 
     def classify(self, flags, multiline, multifile, lastfeed):
         feedforward = {}
+        override_flags = {}
+
         #TODO add directive to disable all c3po processing of a set of lines
-        #otherwise double includes and stuff like itb wont function correctly
 
         #do all pragama matches first
         if is_c3po_pragma(self.cleanline):
-            if "assert" in self.cleanline:
-                #early exit as its replacing the line not signalling the future
-                self.flags = dict(flags)
-                self.flags["assert_mark"] = True
-                return feedforward
-            else:
-                self.isflag = True
-                pragma = pragma_split(self.cleanline)
-                for directive, options in pragma.items():
-                    if directive == "shatter":
-                        shatter(options, flags)
+            self.isflag = True
+            pragma = pragma_split(self.cleanline)
+            for directive, options in pragma.items():
+                if directive == "shatter":
+                    shatter(options, flags)
 
-                    elif directive == "shuffle":
-                        shuffle(options, flags, self.index, multiline)
-                    elif directive == "case":
-                        multiline["shuffle"][-1][2].append([])
+                elif directive == "shuffle":
+                    shuffle(options, flags, self.index, multiline)
 
-                    elif directive == "mangle":
-                        mangle(options, feedforward)
+                elif directive == "case":
+                    multiline["shuffle"][-1][2].append([])
 
-                    elif directive == "encrypt":
-                        encrypt(options, feedforward)
+                elif directive == "mangle":
+                    mangle(options, feedforward)
 
-                    else:
-                        vprint("Unrecognized directive '{}'".format(directive), file=sys.stderr)
+                elif directive == "encrypt":
+                    encrypt(options, feedforward)
+
+                #these directives are not removed but replaced and as such have special handling
+                elif directive == "assert":
+                    self.isflag = False
+                    override_flags["assert_mark"] = True
+
+                elif directive == "timer":
+                    self.isflag = False
+                    timer(options, override_flags)
+
+                else:
+                    vprint(f"Unrecognized directive '{directive}'", file=sys.stderr)
         elif is_include(self.cleanline):
             self.isflag = True
             include = get_include(self.cleanline)
@@ -150,6 +178,8 @@ class Line():
                 multiline["includes"].append(include)
         #copy the state we set
         self.flags = dict(flags)
+        #apply only localized state
+        self.flags.update(override_flags)
 
         #mark lines for future resolution
         #this is for multiline blocks as well not for single line pragmas
@@ -193,7 +223,7 @@ class Line():
                             multifile["mangle_params"][func] = params
                             multifile["mangle"][func].append("shuffle")
                         else:
-                            vprint("Not enough arguments to make shuffling useful: '{}'".format(self.cleanline), file=sys.stderr)
+                            vprint(f"Not enough arguments to make shuffling useful: '{self.cleanline}'", file=sys.stderr)
                     else:
                         random.shuffle(params)
                         multifile["mangle_params"][func] = params
@@ -204,16 +234,16 @@ class Line():
                 if "variadic" in lastfeed:
                     args = get_function_arguments(func, self.cleanline)
                     if is_variadic(args):
-                        vprint("Function already variadic, unable to apply mangling to signature: '{}'".format(self.cleanline), file=sys.stderr)
+                        vprint(f"Function already variadic, unable to apply mangling to signature: '{self.cleanline}'", file=sys.stderr)
                     elif is_defdec(self.cleanline):
                         if func not in multifile["mangle_variadic"]:
                             multifile["mangle_variadic"].append(func)
                         multifile["mangle"][func].append("variadic")
                     else:
-                        vprint("Can only apply mangling to function definitions and declarations: '{}'".format(self.cleanline), file=sys.stderr)
+                        vprint(f"Can only apply mangling to function definitions and declarations: '{self.cleanline}'", file=sys.stderr)
 
             else:
-                vprint("Unable to apply mangling to signature: '{}'".format(self.cleanline), file=sys.stderr)
+                vprint(f"Unable to apply mangling to signature: '{self.cleanline}'", file=sys.stderr)
         if "encrypt" in lastfeed:
             if is_string_define(self.cleanline):
                 self.flags["encrypt_mark"] = "string"
@@ -232,7 +262,7 @@ class Line():
                 multifile["encrypt_func"].append(name)
                 self.flags["encrypt_func"] = name, ','.join(args)
             else:
-                vprint("Cannot encrypt requested type: '{}'".format(self.cleanline), file=sys.stderr)
+                vprint(f"Cannot encrypt requested type: '{self.cleanline}'", file=sys.stderr)
 
 
     def resolve(self, multiline, multifile, shatterself, shatterother):
@@ -241,11 +271,59 @@ class Line():
             key = list(bytes([random.randrange(0, 256) for i in range(32)]))
             iv = list(bytes([random.randrange(0, 256) for i in range(16)]))
             return key, iv
+
         def gen_args():
             #TODO allow randomization to be configurable
             return [str(random.randrange(0, 65535)) for i in range(random.randrange(1, 10))]
+
         def add_includes(*includes):
             multiline["includes"].extend(include for include in includes if include not in multiline["includes"])
+
+
+        if "assert_mark" in self.flags:
+            args = ", ".join(get_function_arguments("assert", self.cleanline))
+
+            add_includes("<stdbool.h>")
+            #wipe out both lines for checks as the line is totally replaced
+            self.line = ""
+            self.cleanline = ""
+            self.prelines.extend(f'''    {{
+        volatile bool assert_check =!({args});
+        if (assert_check) {{
+            {broken_bytes()}
+        }}
+    }}'''.split('\n'))
+
+        if "timer_mark" in self.flags:
+            clock_modes = ["CLOCK_REALTIME", "CLOCK_REALTIME_COARSE", "CLOCK_MONOTONIC",
+                           "CLOCK_MONOTONIC_COARSE", "CLOCK_MONOTONIC_RAW", "CLOCK_BOOTTIME"]
+            self.line = ""
+            self.cleanline = ""
+            name, timing, start = self.flags["timer_mark"]
+            add_includes("<time.h>")
+            if start:
+                multiline["timers"][name] = {
+                    "len":0,
+                    "mode":random.choice(clock_modes)
+                }
+            else:
+                multiline["timers"][name]["len"] += 1
+            count = multiline["timers"][name]["len"]
+            mode = multiline["timers"][name]["mode"]
+
+                #using postlines so they dont get processed
+            self.postlines.extend(f'''
+clock_gettime({mode}, &_{name}_{count});
+'''.split('\n'))
+            if not start:
+                self.postlines.extend(f'''
+clock_gettime({mode}, &_{name}_{count-1});
+'''.split('\n'))
+
+            multiline["prelines"].extend(f'''
+static struct timespec _{name}_{count};
+'''.split('\n'))
+
 
         for func in multifile["encrypt_func"]:
             if func in self.cleanline and has_function(func, self.cleanline) and is_defdec(self.cleanline, ["{"]):
@@ -301,23 +379,6 @@ class Line():
                                           shatterother[multiline["asm"]["index"]],
                                           self.flags["shatter_type"]))
             multiline["asm"]["index"] += 1
-
-
-
-        if "assert_mark" in self.flags:
-            args = ", ".join(get_function_arguments("assert", self.cleanline))
-
-            add_includes("<stdbool.h>")
-            #wipe out both lines for checks as the line is totally replaced
-            self.line = ""
-            self.cleanline = ""
-            self.postlines = f'''    {{
-        volatile bool assert_check =!({args});
-        if (assert_check) {{
-            {broken_bytes()}
-        }}
-    }}'''.split('\n') + self.postlines
-
 
 
         if "encrypt_mark" in self.flags:

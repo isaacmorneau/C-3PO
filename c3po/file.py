@@ -66,6 +66,11 @@ class File():
         #]
 
         #multiline single file block post resolution options
+
+        #for additional out of line data
+        self.prelines = []
+        self.postlines = []
+
         self.multiline = {
             "asm": {
                 "total":0,
@@ -75,11 +80,10 @@ class File():
             "shuffle":[],
             "includes":[],
             "encrypt_len":0,
+            "timers":{},
+            "prelines": self.prelines,
+            "postlines": self.postlines,
         }
-
-        #for additional out of line data
-        self.prelines = []
-        self.postlines = []
 
         #multiline single file block options
         self.flags = {
@@ -95,7 +99,7 @@ class File():
             self.lines = [Line(index, line) for index, line in enumerate(simplify(f.read()))]
 
     def __str__(self):
-        return "[{}:{}]".format(len(self.lines), self.srcpath)
+        return f"[{len(self.lines)}:{self.srcpath}]"
 
     def classify(self, multifile):
         forward = {}
@@ -125,7 +129,7 @@ class File():
     def write(self):
         with open(self.dstpath, "w") as f:
             for include in sorted(self.multiline["includes"]):
-                f.write("#include {}\n".format(include))
+                f.write(f"#include {include}\n")
             if self.prelines:
                 f.write("\n".join(self.prelines))
             for line in self.lines:

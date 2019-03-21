@@ -42,7 +42,7 @@ class Project():
         if not seed:
             seed = "".join("{:02x}".format(t) for t in secrets.token_bytes(5))
 
-        vprint("Using seed: {}".format(seed))
+        vprint(f"Using seed: {seed}")
         random.seed(seed)
 
         #vprint(c3po)
@@ -76,7 +76,7 @@ class Project():
     def parse(self):
         vprint("Parsing:")
         for name, file in self.files.items():
-            vprint("    {}".format(file))
+            vprint(f"    {file}")
             file.classify(self.multifile)
         #mangle to match ida or binja labels
         for func, ops in self.multifile["mangle"].items():
@@ -88,12 +88,12 @@ class Project():
     def resolve(self):
         vprint("Resolving:")
         for name, file in self.files.items():
-            vprint("    {}".format(file))
+            vprint(f"    {file}")
             file.resolve(self.multifile)
         if len(self.multifile["mangle"]) > 0:
             vprint("Functions mangled:")
         for func,opts in self.multifile["mangle"].items():
-            vprint("    [{}".format(func), end="")
+            vprint(f"    [{func}", end="")
             if "name" in opts:
                 vprint(" : {}".format(self.multifile["mangle_match"][func+"("][:-1]), end="")
             if "shuffle" in opts:
@@ -106,7 +106,7 @@ class Project():
     def write(self):
         vprint("Writing:")
         for name, file in self.files.items():
-            vprint("    {}".format(file))
+            vprint(f"    {file}")
             file.write()
         #write the state to the output folder
         with open(os.path.join(os.getcwd(), "c3po.json"), "w+") as cf:
