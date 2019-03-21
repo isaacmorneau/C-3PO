@@ -9,16 +9,16 @@ void foobar(void) {
 }
 
 int main(void) {
-    c3po_zero_elf();
+//    c3po_zero_elf();
 #pragma c3po timer(main, on)
     printf("decoded '%s'\n", CSTR);
 
-#pragma c3po timer(main, 500)
+#pragma c3po timer(main, 70000)
 
 #pragma c3po encrypt
     foobar();
 
-#pragma c3po timer(main, 500)
-//clock_gettime(
+#pragma c3po timer(main, 10000, 20000)
+
     return 0;
 }

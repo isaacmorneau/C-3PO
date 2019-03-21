@@ -91,7 +91,8 @@ def encrypt(options, feedforward):
 
 def timer(options, flags):
     #default to 500ms
-    timing = 500
+    maxtime = None
+    mintime = None
     name = None
     start = False
     for opt in options:
@@ -99,8 +100,16 @@ def timer(options, flags):
             start = True
         else:
             try:
-                timing = int(opt)
-                continue
+                if not maxtime:
+                    maxtime = int(opt)
+                elif not mintime:
+                    temp = int(opt)
+                    #if theres two numbers there was a min value
+                    mintime = maxtime
+                    maxtime = temp
+                else:
+                    extranum = int(opt)
+                    vprint(f"Too many numbers specified for timer: '{extranum}'", file=sys.stderr)
             except ValueError:
                 if name:
                     vprint(f"Unrecognized option for timer: '{opt}'", file=sys.stderr)
@@ -108,7 +117,7 @@ def timer(options, flags):
                     #its a name
                     name = opt
 
-    flags["timer_mark"] = name if name else "generic_timer", timing, start
+    flags["timer_mark"] = name if name else "generic_timer", maxtime if maxtime else 500, mintime, start
 
 
 def pkcs7_pad(value):
@@ -296,11 +305,10 @@ class Line():
 
         if "timer_mark" in self.flags:
             #TODO see if you can use RDTSC as a harder to fool timing method
-            clock_modes = ["CLOCK_REALTIME", "CLOCK_REALTIME_COARSE", "CLOCK_MONOTONIC",
-                           "CLOCK_MONOTONIC_COARSE", "CLOCK_MONOTONIC_RAW", "CLOCK_BOOTTIME"]
+            clock_modes = ["CLOCK_REALTIME", "CLOCK_MONOTONIC", "CLOCK_MONOTONIC_RAW", "CLOCK_BOOTTIME"]
             self.line = ""
             self.cleanline = ""
-            name, timing, start = self.flags["timer_mark"]
+            name, maxtime, mintime, start = self.flags["timer_mark"]
             add_includes("<time.h>")
             if start:
                 multiline["timers"][name] = {
@@ -308,29 +316,35 @@ class Line():
                     "mode":random.choice(clock_modes)
                 }
             else:
-                multiline["timers"][name]["len"] += 1
-            count = multiline["timers"][name]["len"]
-            mode = multiline["timers"][name]["mode"]
+                if name in multiline["timers"]:
+                    multiline["timers"][name]["len"] += 1
+                else:
+                    vprintf(f"Timer {name} has not been initalized, ensure there is a timer(on) directive")
 
-                #using postlines so they dont get processed
-            self.postlines.extend(f'''
-clock_gettime({mode}, &_{name}_{count});
-'''.split('\n'))
-            if not start:
-                self.postlines.extend(f'''
+            if name in multiline["timers"]:
+                count = multiline["timers"][name]["len"]
+                mode = multiline["timers"][name]["mode"]
+
+                check = f"_{name}_ms_diff < {mintime} || _{name}_ms_diff > {maxtime}" if mintime else f"_{name}_ms_diff > {maxtime}"
+
+                self.postlines.append(f'    clock_gettime({mode}, &_{name}_{count});')
+
+                if not start:
+                    #TODO do something useful on failure
+                    self.postlines.extend(f'''
     {{
-        double _{name}_ms_diff = ((double)_{name}_{count}.tv_sec*1000 + (double)_{name}_{count}.tv_nsec / 1.0e6) -
-            ((double)_{name}_{count-1}.tv_sec * 1000 + (double)_{name}_{count-1}.tv_nsec / 1.0e6);
-        if (_{name}_ms_diff > {timing}) {{
-            printf("failed timing %lf\\n", _{name}_ms_diff);
+        long _{name}_ms_diff = (_{name}_{count}.tv_sec * 1e9L + _{name}_{count}.tv_nsec) -
+            (_{name}_{count-1}.tv_sec * 1e9L + _{name}_{count-1}.tv_nsec);
+
+        if ({check}) {{
+            printf("failed timing %ld\\n", _{name}_ms_diff);
         }} else {{
-            printf("passed timing %lf\\n", _{name}_ms_diff);
+            printf("passed timing %ld\\n", _{name}_ms_diff);
         }}
     }}
-clock_gettime({mode}, &_{name}_{count-1});
 '''.split('\n'))
 
-            multiline["prelines"].extend(f'''
+                multiline["prelines"].extend(f'''
 static struct timespec _{name}_{count};
 '''.split('\n'))
 
