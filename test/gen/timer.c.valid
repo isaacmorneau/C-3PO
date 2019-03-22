@@ -1,0 +1,44 @@
+#include <stdio.h>
+#include <time.h>
+
+static struct timespec _main_0;
+
+
+static struct timespec _main_1;
+
+
+static struct timespec _main_2;
+int main(void) {
+
+    clock_gettime(CLOCK_MONOTONIC_RAW, &_main_0);    puts("hello world");
+    fputs("hello world", stderr);
+
+    clock_gettime(CLOCK_MONOTONIC_RAW, &_main_1);
+
+    {
+        long _main_ms_diff = (_main_1.tv_sec * 1e9L + _main_1.tv_nsec) -
+            (_main_0.tv_sec * 1e9L + _main_0.tv_nsec);
+
+        if (_main_ms_diff > 60000) {
+            printf("failed timing %ld\n", _main_ms_diff);
+        } else {
+            printf("passed timing %ld\n", _main_ms_diff);
+        }
+    }
+    puts("hello world");
+    fputs("hello world", stderr);
+
+    clock_gettime(CLOCK_MONOTONIC_RAW, &_main_2);
+
+    {
+        long _main_ms_diff = (_main_2.tv_sec * 1e9L + _main_2.tv_nsec) -
+            (_main_1.tv_sec * 1e9L + _main_1.tv_nsec);
+
+        if (_main_ms_diff < 1000 || _main_ms_diff > 20000) {
+            printf("failed timing %ld\n", _main_ms_diff);
+        } else {
+            printf("passed timing %ld\n", _main_ms_diff);
+        }
+    }
+    return 0;
+}

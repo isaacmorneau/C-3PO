@@ -2,7 +2,6 @@
 #include <stdio.h>
 int main(int argc, char **argv) {
     (void)argv;
-
     {
         volatile bool assert_check =!(argc > 0);
         if (assert_check) {
@@ -13,8 +12,9 @@ int main(int argc, char **argv) {
 ".byte 0xe7;"
             :::);
         }
-    }    for (int i = 0; i < 10; ++i) {
+    }
 
+    for (int i = 0; i < 10; ++i) {
     {
         volatile bool assert_check =!(i < 10);
         if (assert_check) {
@@ -26,8 +26,9 @@ int main(int argc, char **argv) {
 ".byte 0x41;"
             :::);
         }
-    }        printf("%d", i);
+    }
 
+        printf("%d", i);
     {
         volatile bool assert_check =!(i >= 0);
         if (assert_check) {
@@ -38,5 +39,7 @@ int main(int argc, char **argv) {
 ".byte 0x59;"
             :::);
         }
-    }    }
+    }
+
+    }
 }

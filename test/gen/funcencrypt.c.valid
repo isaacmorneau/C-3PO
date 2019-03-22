@@ -1,5 +1,6 @@
 #include "c3po.h"
 #include <dlfcn.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -9,7 +10,7 @@ __attribute__ ((visibility ("default"))) void sub_b19f(void) {
 int main(void) {
 
     {
-        void *foobar_mdl = dlopen(NULL, RTLD_NOW | RTLD_LOCAL), *foobar_mfl;
+        void *foobar_mdl = dlopen(NULL, RTLD_NOW | RTLD_LOCAL), *foobar_mfl = NULL;
         if (foobar_mdl) {
             {
                 static volatile const uint8_t _foobar_data[] = {
@@ -27,10 +28,19 @@ int main(void) {
                 aes_init_ctx_iv(&ctx, _foobar_key, _foobar_iv);
                 aes_cbc_decrypt_buffer(&ctx, _foobar_buf, 16);
 
-                //TODO verify padding
-
-                foobar_mfl = dlsym(foobar_mdl, (const char*)_foobar_buf);
-                memset(_foobar_buf, 0, 16);
+                //verify padding
+                uint8_t pad = _foobar_buf[16-1];
+                bool failed = false;
+                for (size_t i = 0; i < 16 && i < pad; ++i) {
+                    if (_foobar_buf[16-1-i] != pad) {
+                        failed = true;
+                        break;
+                    }
+                }
+                if (!failed) {
+                    foobar_mfl = dlsym(foobar_mdl, (const char*)_foobar_buf);
+                    memset(_foobar_buf, 0, 16);
+                }
             }
 
             dlclose(foobar_mdl);

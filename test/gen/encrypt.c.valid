@@ -1,4 +1,5 @@
 #include "c3po.h"
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -20,9 +21,20 @@ int main(void) {
         aes_init_ctx_iv(&ctx, _HW_key, _HW_iv);
         aes_cbc_decrypt_buffer(&ctx, _HW_buf, 16);
 
-        //TODO verify padding
+        //verify padding
+        uint8_t pad = _HW_buf[16-1];
+        bool failed = false;
+        for (size_t i = 0; i < 16 && i < pad; ++i) {
+            if (_HW_buf[16-1-i] != pad) {
+                failed = true;
+                break;
+            }
+        }
         const char* HW = (const char*)_HW_buf;
+
+        if (!failed) {
     puts(HW);
 
-        memset(_HW_buf, 0, 16);
+            memset(_HW_buf, 0, 16);
+        }
       }}
