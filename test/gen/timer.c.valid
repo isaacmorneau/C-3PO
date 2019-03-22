@@ -1,12 +1,7 @@
 #include <stdio.h>
 #include <time.h>
-
 static struct timespec _main_0;
-
-
 static struct timespec _main_1;
-
-
 static struct timespec _main_2;
 int main(void) {
 
