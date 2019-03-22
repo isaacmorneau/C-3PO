@@ -344,9 +344,7 @@ class Line():
     }}
 '''.split('\n'))
 
-                multiline["prelines"].extend(f'''
-static struct timespec _{name}_{count};
-'''.split('\n'))
+                multiline["prelines"].append(f'static struct timespec _{name}_{count};')
 
 
         for func in multifile["encrypt_func"]:
@@ -357,22 +355,26 @@ static struct timespec _{name}_{count};
         for token, value in multifile["encrypt_strings"].items():
             if token in self.cleanline and not is_string_define(self.cleanline):
                 key, iv = gen_key_iv()
-                keybytes = ", ".join("0x{:02x}".format(k) for k in key)
-                ivbytes = ", ".join("0x{:02x}".format(i) for i in iv)
-                databytes = ", ".join("0x{:02x}".format(v) for v in value)
+                allbytes = key + iv + value
+                databytes = ""
+                for i in range(0, len(allbytes), 16):
+                    databytes += ", ".join("0x{:02x}".format(v) for v in allbytes[i:i+16])
+                    if i != len(allbytes) - 16:
+                        databytes += ",\n            "
 
                 multifile["post_encrypt"].append({"key":key,"len":len(value)})
                 add_includes("<stdint.h>", "<string.h>", '"c3po.h"', "<stdbool.h>")
-                self.prelines.extend(f'''    {{
+                self.prelines.extend(f'''
+    {{
         static volatile const uint8_t _{token}_data[] = {{
-                {keybytes},
-                {ivbytes},
-                {databytes}
-            }};
+            {databytes}
+        }};
+
         const uint8_t* _{token}_key = (const uint8_t*)_{token}_data;
-        const uint8_t* _{token}_iv = (const uint8_t*)_{token}_data + 32;
-        uint8_t _{token}_buf[{len(value)}];
+        const uint8_t* _{token}_iv  = (const uint8_t*)_{token}_data + 32;
         const uint8_t* _{token}_enc = (const uint8_t*)_{token}_data + 48;
+
+        uint8_t _{token}_buf[{len(value)}];
         memcpy(_{token}_buf, _{token}_enc, {len(value)});
 
         struct aes_ctx ctx;
@@ -380,21 +382,23 @@ static struct timespec _{name}_{count};
         aes_cbc_decrypt_buffer(&ctx, _{token}_buf, {len(value)});
 
         //verify padding
-        uint8_t pad = _{token}_buf[{len(value)}-1];
+        uint8_t pad = _{token}_buf[{len(value)-1}];
         bool failed = false;
         for (size_t i = 0; i < {len(value)} && i < pad; ++i) {{
-            if (_{token}_buf[{len(value)}-1-i] != pad) {{
+            if (_{token}_buf[{len(value)-1}-i] != pad) {{
                 failed = true;
                 break;
             }}
         }}
+
         const char* {token} = (const char*)_{token}_buf;
 
         if (!failed) {{'''.split("\n"))
+                self.line = f"            {self.cleanline}"
                 self.postlines.insert(0, f'''
             memset(_{token}_buf, 0, {len(value)});
         }}
-      }}''')
+    }}''')
 
 
         if "shatter_mark" in self.flags and self.flags["shatter_mark"]:
@@ -415,13 +419,17 @@ static struct timespec _{name}_{count};
                 mangled = name if name+'(' not in multifile["mangle_match"] else multifile["mangle_match"][name+'('][:-1]
                 #get the encryption data
                 key, iv = gen_key_iv()
-                keybytes = ", ".join("0x{:02x}".format(k) for k in key)
-                ivbytes = ", ".join("0x{:02x}".format(i) for i in iv)
                 #prepare the name for encryption
                 value = list(mangled.encode())
                 value.append(0)
                 value = pkcs7_pad(value)
-                databytes = ", ".join("0x{:02x}".format(v) for v in value)
+
+                allbytes = key + iv + value
+                databytes = ""
+                for i in range(0, len(allbytes), 16):
+                    databytes += ", ".join("0x{:02x}".format(v) for v in allbytes[i:i+16])
+                    if i != len(allbytes) - 16:
+                        databytes += ",\n                    "
 
                 multifile["post_encrypt"].append({"key":key,"len":len(value)})
                 add_includes("<stdint.h>", "<string.h>", '"c3po.h"', "<dlfcn.h>", "<stdbool.h>")
@@ -431,14 +439,14 @@ static struct timespec _{name}_{count};
         if ({name}_mdl) {{
             {{
                 static volatile const uint8_t _{name}_data[] = {{
-                    {keybytes},
-                    {ivbytes},
                     {databytes}
                 }};
+
                 const uint8_t* _{name}_key = (const uint8_t*)_{name}_data;
-                const uint8_t* _{name}_iv = (const uint8_t*)_{name}_data + 32;
-                uint8_t _{name}_buf[{len(value)}];
+                const uint8_t* _{name}_iv  = (const uint8_t*)_{name}_data + 32;
                 const uint8_t* _{name}_enc = (const uint8_t*)_{name}_data + 48;
+
+                uint8_t _{name}_buf[{len(value)}];
                 memcpy(_{name}_buf, _{name}_enc, {len(value)});
 
                 struct aes_ctx ctx;
@@ -446,14 +454,15 @@ static struct timespec _{name}_{count};
                 aes_cbc_decrypt_buffer(&ctx, _{name}_buf, {len(value)});
 
                 //verify padding
-                uint8_t pad = _{name}_buf[{len(value)}-1];
+                uint8_t pad = _{name}_buf[{len(value)-1}];
                 bool failed = false;
                 for (size_t i = 0; i < {len(value)} && i < pad; ++i) {{
-                    if (_{name}_buf[{len(value)}-1-i] != pad) {{
+                    if (_{name}_buf[{len(value)-1}-i] != pad) {{
                         failed = true;
                         break;
                     }}
                 }}
+
                 if (!failed) {{
                     {name}_mfl = dlsym({name}_mdl, (const char*)_{name}_buf);
                     memset(_{name}_buf, 0, {len(value)});

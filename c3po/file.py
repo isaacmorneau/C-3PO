@@ -131,7 +131,7 @@ class File():
             for include in sorted(self.multiline["includes"]):
                 f.write(f"#include {include}\n")
             if self.prelines:
-                f.write("\n".join(self.prelines))
+                f.write("\n".join(self.prelines)+"\n")
             for line in self.lines:
                 line.write(f)
             if self.postlines:
