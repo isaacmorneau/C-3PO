@@ -395,8 +395,7 @@ class Line():
 
         if (!failed) {{'''.split("\n"))
                 self.line = f"            {self.cleanline}"
-                self.postlines.insert(0, f'''
-            memset(_{token}_buf, 0, {len(value)});
+                self.postlines.insert(0, f'''            memset(_{token}_buf, 0, {len(value)});
         }}
     }}''')
 
@@ -473,8 +472,7 @@ class Line():
             if ({name}_mfl) {{'''.split('\n'))
                 self.cleanline= f'((__typeof__({mangled}) *){name}_mfl)({args});'
                 self.line = f'                {self.cleanline}'
-                self.postlines = '''
-#ifndef NDEBUG
+                self.postlines = '''#ifndef NDEBUG
             } else {
                 puts(dlerror());
             }
