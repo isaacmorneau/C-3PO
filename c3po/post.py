@@ -26,15 +26,27 @@ class PostProcess():
     def encrypt(self):
         pe = self.state["post_encrypt"]
         keys = [{"key":batch["key"], "len":batch["len"]} for batch in pe]
+        if not keys:
+            vprint("No keys to process")
+            return
         vprint("Finding {} keys:".format(len(keys)))
+        allkeys = set()
         for i, batch in enumerate(keys):
             vprint("    "+''.join("{:02x}".format(k) for k in batch["key"]))
+            allkeys.update(batch["key"])
 
         keystocheck = [i for i in range(len(keys))]
+
         for i,d in enumerate(self.data):
+            if d not in allkeys:
+                #cheap skipforward
+                continue;
+
             for k in keystocheck:
                 #if the first byte matches check the rest
                 #i could implement a string matching algorithm or i could not
+                if d not in keys[k]["key"]:
+                    continue;
                 if d == keys[k]["key"][0] and self.data[i:i+32] == keys[k]["key"]:
                     #vprint("    found {} at offset {}".format(k, i))
                     keys[k]["offset"] = i
