@@ -30,15 +30,27 @@ class PostProcess():
             vprint("No keys to process")
             return
         vprint("Finding {} keys:".format(len(keys)))
-        allkeys = set()
+
+        #record which keys are acually to check
+        goodkeys = set()
+        badkeys = set()
         for i, batch in enumerate(keys):
             vprint("    "+''.join("{:02x}".format(k) for k in batch["key"]))
-            allkeys.update(batch["key"])
+            goodkeys.update(batch["key"])
 
         keystocheck = [i for i in range(len(keys))]
 
+        if len(goodkeys) > 127:
+            #there might be less bytes to blacklist than white
+            badkeys = set(r for r in range(256) if r not in goodkeys)
+            print(f"using blacklist: {len(badkeys)} {badkeys}")
+        else:
+            print(f"using whitelist: {len(goodkeys)} {goodkeys}")
+
+
+
         for i,d in enumerate(self.data):
-            if d not in allkeys:
+            if d in badkeys or d not in goodkeys:
                 #cheap skipforward
                 continue;
 

@@ -6,6 +6,13 @@
 #pragma c3po mangle(name)
 void foobar(void) {
     puts("hello world");
+    __asm__(
+            "jmp .+0x6;"
+            ".byte 0x1;"
+            ".byte 0x3;"
+            ".byte 0x3;"
+            ".byte 0x7;"
+            );
 }
 
 int main(void) {
