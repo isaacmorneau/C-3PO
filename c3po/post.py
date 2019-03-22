@@ -36,7 +36,7 @@ class PostProcess():
         badkeys = set()
         for i, batch in enumerate(keys):
             vprint("    "+''.join("{:02x}".format(k) for k in batch["key"]))
-            goodkeys.update(batch["key"])
+            goodkeys.add(batch["key"][0])
 
         keystocheck = [i for i in range(len(keys))]
 
@@ -56,9 +56,6 @@ class PostProcess():
 
             for k in keystocheck:
                 #if the first byte matches check the rest
-                #i could implement a string matching algorithm or i could not
-                if d not in keys[k]["key"]:
-                    continue;
                 if d == keys[k]["key"][0] and self.data[i:i+32] == keys[k]["key"]:
                     #vprint("    found {} at offset {}".format(k, i))
                     keys[k]["offset"] = i
