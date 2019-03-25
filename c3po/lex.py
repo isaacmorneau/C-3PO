@@ -357,6 +357,18 @@ def is_string_define(line):
                 return False
     return False
 
+#check if a directive is an array not just ta pointer
+def is_array(line):
+    if line[-1] != ';':
+        return False;
+    if '[' not in line and ']':
+        return False;
+    return True
+
+def get_array_definition(line):
+    parts = line.split("]")
+    return f"{parts[0]}] ="
+
 #intended to operate on cleanline
 def is_return(line):
     return line.startswith("return")
@@ -366,6 +378,23 @@ def is_variadic(args):
 
 class LexTest(unittest.TestCase):
     #TODO none of the current parsers respect string literals containing the code they are expecting
+    def test_is_array(self):
+        self.assertTrue(is_array("uint8_t testing[];"))
+        self.assertTrue(is_array("char testing[];"))
+        self.assertTrue(is_array("char testing[] = {0, 1, 2};"))
+        self.assertTrue(is_array("char testing[40] = {0, 1, 2};"))
+
+        self.assertFalse(is_array("uint8_t testing;"))
+        self.assertFalse(is_array("char *testing;"))
+        self.assertFalse(is_array("char testing, ar;"))
+        self.assertFalse(is_array("char testing();"))
+
+    def test_get_array_definition(self):
+        self.assertEquals(is_array("uint8_t testing[];"), "uint8_t testing[] =")
+        self.assertEquals(is_array("char testing[];"), "char testing[] =")
+        self.assertEquals(is_array("char testing[] = {0, 1, 2};"), "char testing[] =")
+        self.assertEquals(is_array("char testing[40] = {0, 1, 2};"), "char testing[40] =")
+
     def test_pragma_split(self):
         self.assertEquals(pragma_split("test(option, option)"), {"test":["option", "option"]})
         self.assertEquals(pragma_split("test"), {"test":[]})
