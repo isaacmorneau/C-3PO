@@ -43,9 +43,9 @@ class PostProcess():
         if len(goodkeys) > 127:
             #there might be less bytes to blacklist than white
             badkeys = set(r for r in range(256) if r not in goodkeys)
-            print(f"using blacklist: {len(badkeys)} {badkeys}")
+            vprint(f"using blacklist: {len(badkeys)} {badkeys}")
         else:
-            print(f"using whitelist: {len(goodkeys)} {goodkeys}")
+            vprint(f"using whitelist: {len(goodkeys)} {goodkeys}")
 
 
 
