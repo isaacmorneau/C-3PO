@@ -1,6 +1,7 @@
 import re
 import sys
 import random
+import os
 from .output import vprint
 from .lex import *
 from .asm import *
@@ -25,6 +26,13 @@ def broken_bytes():
             {}
             :::);'''.format('\n'.join("\".byte 0x{:x};\"".format(opt) for opt in ops))
 
+def chunk_printed_data(values):
+    databytes = ""
+    for i in range(0, len(values), 16):
+        databytes += ", ".join("0x{:02x}".format(v) for v in values[i:i+16])
+        if i != len(values) - 16:
+            databytes += ",\n            "
+    return databytes
 
 def shatter(options, flags):
     for opt in options:
@@ -88,6 +96,19 @@ def encrypt(options, feedforward):
                 feedforward["padding"] = int(opt)
             except ValueError as ex:
                 vprint(f"Unrecognized option for encrypt: '{opt}'", file=sys.stderr)
+
+def external(options, feedforward):
+    feedforward["external"] = True
+    feedforward["external_path"] = None
+    for opt in options:
+        if feedforward["external_path"]:
+            vprint(f"Unrecognized option for external: '{opt}'", file=sys.stderr)
+        else:
+            if os.path.isfile(opt):
+                feedforward["external_path"] = opt
+            else:
+                vprint(f"Cannot load file for external: '{opt}'", file=sys.stderr)
+
 
 def timer(options, flags):
     #default to 500ms
@@ -168,6 +189,9 @@ class Line():
 
                 elif directive == "encrypt":
                     encrypt(options, feedforward)
+
+                elif directive == "external":
+                    external(options, feedforward)
 
                 #these directives are not removed but replaced and as such have special handling
                 elif directive == "assert":
@@ -272,6 +296,14 @@ class Line():
                 self.flags["encrypt_func"] = name, ','.join(args)
             else:
                 vprint(f"Cannot encrypt requested type: '{self.cleanline}'", file=sys.stderr)
+        if "external" in lastfeed and lastfeed["external_path"]:
+            if is_array(self.cleanline):
+                arraydef = get_array_definition(self.cleanline)
+                #path verified at pragma parsing
+                filedata = open(lastfeed["external_path"], "rb").read()
+                self.flags["external_mark"] = arraydef, filedata
+            else:
+                vprint(f"Cannot include external for requested type: '{self.cleanline}'", file=sys.stderr)
 
 
     def resolve(self, multiline, multifile, shatterself, shatterother):
@@ -356,11 +388,7 @@ class Line():
             if token in self.cleanline and not is_string_define(self.cleanline):
                 key, iv = gen_key_iv()
                 allbytes = key + iv + value
-                databytes = ""
-                for i in range(0, len(allbytes), 16):
-                    databytes += ", ".join("0x{:02x}".format(v) for v in allbytes[i:i+16])
-                    if i != len(allbytes) - 16:
-                        databytes += ",\n            "
+                databytes = chunk_printed_data(allbytes)
 
                 multifile["post_encrypt"].append({"key":key,"len":len(value)})
                 add_includes("<stdint.h>", "<string.h>", '"c3po.h"', "<stdbool.h>")
@@ -424,11 +452,7 @@ class Line():
                 value = pkcs7_pad(value)
 
                 allbytes = key + iv + value
-                databytes = ""
-                for i in range(0, len(allbytes), 16):
-                    databytes += ", ".join("0x{:02x}".format(v) for v in allbytes[i:i+16])
-                    if i != len(allbytes) - 16:
-                        databytes += ",\n                    "
+                databytes = chunk_printed_data(allbytes)
 
                 multifile["post_encrypt"].append({"key":key,"len":len(value)})
                 add_includes("<stdint.h>", "<string.h>", '"c3po.h"', "<dlfcn.h>", "<stdbool.h>")
@@ -583,6 +607,15 @@ class Line():
                 self.cleanline = self.cleanline.replace(key, value)
             self.prelines = [line.replace(key, value) for line in self.prelines]
             self.postlines = [line.replace(key, value) for line in self.postlines]
+
+
+        if "external_mark" in self.flags:
+            arraydef, alldata = self.flags["external_mark"]
+            self.line = f'''
+    {arraydef} {{
+        {chunk_printed_data(alldata)}
+    }};'''
+            self.cleanline= self.line.strip()
 
 
 
