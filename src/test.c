@@ -27,5 +27,10 @@ int main(void) {
 
 #pragma c3po timer(main, 10000, 20000)
 
+#pragma c3po external(../LICENSE)
+    char data[] = "hello world";
+
+    puts(data);
+
     return 0;
 }
