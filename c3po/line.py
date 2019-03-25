@@ -30,7 +30,7 @@ def chunk_printed_data(values):
     databytes = ""
     for i in range(0, len(values), 16):
         databytes += ", ".join("0x{:02x}".format(v) for v in values[i:i+16])
-        if i != len(values) - 16:
+        if i < len(values) - 16:
             databytes += ",\n            "
     return databytes
 
