@@ -11,22 +11,24 @@ mkdir -p gen
 TESTS=(basic assert mangle shatter shuffle timer external)
 for test in ${TESTS[@]};
 do
-    printf "building original $test"
+    name=$(printf '%-10s' "$test")
+    printf "building original $name"
     gcc ../src/c3po.c "$test/$test.c" -I ../src/ -o "gen/${test}d"
-    printf ", generating c3po $test"
+    printf "\tgenerating c3po $name"
     ../c3po.py build -s "$test" -o gen/ --seed c823d57855 --quiet
-    echo ", building c3po $test"
+    echo -e "\tbuilding c3po $name"
     gcc ../src/c3po.c "gen/$test.c" -I ../src/ -o "gen/$test"
 done
 #run encrypt last so the c3po.json is correct
 ENCTESTS=(encrypt funcencrypt)
 for test in ${ENCTESTS[@]};
 do
-    printf "building original $test"
+    name=$(printf '%-10s' "$test")
+    printf "building original $name"
     gcc ../src/c3po.c "$test/$test.c" -I ../src/ -o "gen/${test}d"
-    printf ", generating c3po $test"
+    printf "\tgenerating c3po $name"
     ../c3po.py build -s "$test" -o gen/ --seed c823d57855 --quiet
-    echo ", building c3po $test"
+    echo -e "\tbuilding c3po $name"
     gcc ../src/c3po.c "gen/$test.c" -I ../src/ -ldl -rdynamic -o "gen/$test"
     #finish the encryption pass
     ../c3po.py post -s "gen/$test" --json ./c3po.json --quiet
