@@ -8,7 +8,7 @@ echo "==> unit tests"
 #integration tests
 echo "==> preparing for integration tests"
 mkdir -p gen
-TESTS=(basic assert mangle shatter shuffle timer)
+TESTS=(basic assert mangle shatter shuffle timer external)
 for test in ${TESTS[@]};
 do
     printf "building original $test"

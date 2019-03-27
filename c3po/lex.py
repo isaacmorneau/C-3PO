@@ -390,10 +390,10 @@ class LexTest(unittest.TestCase):
         self.assertFalse(is_array("char testing();"))
 
     def test_get_array_definition(self):
-        self.assertEquals(is_array("uint8_t testing[];"), "uint8_t testing[] =")
-        self.assertEquals(is_array("char testing[];"), "char testing[] =")
-        self.assertEquals(is_array("char testing[] = {0, 1, 2};"), "char testing[] =")
-        self.assertEquals(is_array("char testing[40] = {0, 1, 2};"), "char testing[40] =")
+        self.assertEquals(get_array_definition("uint8_t testing[];"), "uint8_t testing[] =")
+        self.assertEquals(get_array_definition("char testing[];"), "char testing[] =")
+        self.assertEquals(get_array_definition("char testing[] = {0, 1, 2};"), "char testing[] =")
+        self.assertEquals(get_array_definition("char testing[40] = {0, 1, 2};"), "char testing[40] =")
 
     def test_pragma_split(self):
         self.assertEquals(pragma_split("test(option, option)"), {"test":["option", "option"]})
